@@ -45,4 +45,17 @@ describe('skill tree engine', () => {
     expect(adapted.interests).toContain('calisthenics');
     expect(adapted.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['Muscle up pathway', 'Front lever basics']));
   });
+
+  it('unlocks the first adaptive node when it grows from completed progress', () => {
+    const tree = generateSkillTree({
+      title: 'I want to get stronger',
+      experienceLevel: 'Beginner',
+      weeklyHours: 5,
+      interests: 'pushups',
+    });
+    const completed = completeNode(tree, tree.nodes[0].id, 'Finished the baseline quest.', ['pullups']);
+    const adapted = adaptSkillTree(completed, ['pushups', 'dips', 'pullups', 'handstand']);
+
+    expect(adapted.nodes.find((node) => node.title === 'Muscle up pathway')?.status).toBe('unlocked');
+  });
 });

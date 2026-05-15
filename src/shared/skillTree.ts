@@ -232,6 +232,7 @@ export function adaptSkillTree(
   const additions = adaptationCatalog[focus] ?? adaptationCatalog.frontend;
   const rootId = tree.nodes[0]?.id.replace('-root', '') ?? slug(tree.rootGoal);
   const existingTitles = new Set(tree.nodes.map((node) => normalize(node.title)));
+  const completed = new Set(tree.nodes.filter((node) => node.status === 'complete').map((node) => node.id));
   const anchor =
     [...tree.nodes].reverse().find((node) => node.status === 'complete') ??
     tree.nodes.find((node) => node.branch === 'root') ??
@@ -247,6 +248,7 @@ export function adaptSkillTree(
     node.position = { x: 460 + index * 240, y: 660 };
     node.rarity = index > 1 ? 'epic' : 'rare';
     node.hidden = index > 2;
+    node.status = node.prerequisites.every((prerequisite) => completed.has(prerequisite)) ? 'unlocked' : 'locked';
     nodes.push(node);
     edges.push({ id: `${previous}-${node.id}`, source: previous, target: node.id });
     previous = node.id;

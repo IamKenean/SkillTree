@@ -51,7 +51,7 @@ function App() {
     setDashboard(payload);
   }
 
-  function applyTree(tree: SkillTree) {
+  function applyTree(tree: SkillTree, nextSelectedNodeId?: string) {
     setDashboard((current) => {
       if (!current) return current;
       const goals = current.goals.some((goal) => goal.id === tree.id)
@@ -73,7 +73,7 @@ function App() {
       };
     });
     setActiveGoalId(tree.id);
-    setSelectedNodeId(tree.nodes.find((node) => node.status === 'unlocked')?.id ?? tree.nodes[0]?.id);
+    setSelectedNodeId(nextSelectedNodeId ?? tree.nodes.find((node) => node.status === 'unlocked')?.id ?? tree.nodes[0]?.id);
   }
 
   async function runAction(action: () => Promise<void>) {
@@ -179,7 +179,8 @@ function App() {
               onAdapt={(signals) =>
                 runAction(async () => {
                   const tree = await api.adaptGoal(session.token, activeGoal.id, signals);
-                  applyTree(tree);
+                  const evolutionNode = tree.nodes.find((candidate) => candidate.branch.includes('evolution'));
+                  applyTree(tree, evolutionNode?.id);
                 })
               }
             />

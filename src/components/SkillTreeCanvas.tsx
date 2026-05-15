@@ -2,7 +2,6 @@ import {
   Background,
   Controls,
   Handle,
-  MiniMap,
   Position,
   ReactFlow,
   type Edge,
@@ -82,6 +81,7 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTre
   return (
     <div className="tree-shell">
       <ReactFlow
+        key={`${tree.id}-${tree.nodes.length}-${tree.updatedAt}`}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -91,20 +91,6 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTre
         onNodeClick={(_, node) => onSelectNode(node.data.skill)}
       >
         <Background color="#284164" gap={28} />
-        <MiniMap
-          nodeColor={(node) => {
-            const status = (node.data as SkillNodeData).skill.status;
-            if (status === 'complete') return '#34d399';
-            if (status === 'unlocked') return '#6ee7ff';
-            return '#334155';
-          }}
-          nodeStrokeColor="#0f172a"
-          maskColor="rgba(3, 7, 18, 0.68)"
-          style={{ background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(110, 231, 255, 0.18)' }}
-          nodeStrokeWidth={3}
-          pannable
-          zoomable
-        />
         <Controls />
       </ReactFlow>
     </div>

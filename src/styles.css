@@ -403,12 +403,12 @@ textarea:focus {
 
 .react-flow__controls-button {
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-  color: #dff9ff;
-  background: rgba(15, 23, 42, 0.94);
+  color: #dff9ff !important;
+  background: rgba(15, 23, 42, 0.96) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: rgba(30, 41, 59, 0.96);
+  background: rgba(30, 41, 59, 0.98) !important;
 }
 
 .react-flow__controls-button svg {
