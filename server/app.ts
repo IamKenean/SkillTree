@@ -176,7 +176,7 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
   app.post('/api/goals/:goalId/complete', requireAuth, async (req: AuthenticatedRequest, res, next) => {
     try {
       const input = completeSchema.parse(req.body);
-      const tree = await updateGoal(store, req.user!.id, req.params.goalId, (goal) =>
+      const tree = await updateGoal(store, req.user!.id, String(req.params.goalId), (goal) =>
         completeNode(goal, input.nodeId, input.note, input.focusTags, input.proofUrl || undefined),
       );
       res.json(tree);
@@ -188,7 +188,7 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
   app.post('/api/goals/:goalId/adapt', requireAuth, async (req: AuthenticatedRequest, res, next) => {
     try {
       const input = adaptSchema.parse(req.body);
-      const tree = await updateGoal(store, req.user!.id, req.params.goalId, (goal) => adaptSkillTree(goal, input.signals));
+      const tree = await updateGoal(store, req.user!.id, String(req.params.goalId), (goal) => adaptSkillTree(goal, input.signals));
       res.json(tree);
     } catch (error) {
       next(error);
