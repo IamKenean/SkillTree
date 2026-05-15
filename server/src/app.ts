@@ -235,7 +235,11 @@ app.get("/api/goals", authMiddleware, (req, res) => {
 });
 
 app.get("/api/goals/:goalId/tree", authMiddleware, (req, res) => {
-  const goalId = req.params.goalId;
+  const goalParam = req.params.goalId;
+  const goalId = Array.isArray(goalParam) ? goalParam[0] : goalParam;
+  if (!goalId) {
+    return res.status(400).json({ error: "Goal ID is required." });
+  }
   const result = withStore((store) => {
     const goal = store.goals.find((candidate) => candidate.id === goalId);
     if (!goal || goal.userId !== req.userId) {
@@ -261,7 +265,13 @@ app.post("/api/goals/:goalId/nodes/:nodeId/complete", authMiddleware, (req, res)
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { goalId, nodeId } = req.params;
+  const goalParam = req.params.goalId;
+  const nodeParam = req.params.nodeId;
+  const goalId = Array.isArray(goalParam) ? goalParam[0] : goalParam;
+  const nodeId = Array.isArray(nodeParam) ? nodeParam[0] : nodeParam;
+  if (!goalId || !nodeId) {
+    return res.status(400).json({ error: "Goal ID and node ID are required." });
+  }
   const payload = parsed.data;
 
   const response = withStore((store) => {

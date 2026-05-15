@@ -1,15 +1,23 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { ApiError, createApiClient } from "./api";
 import { SkillTreeView } from "./components/SkillTreeView";
-import { DashboardResponse, GoalSummary, SkillNode } from "./types";
+import type { DashboardResponse, ExperienceLevel, SkillNode } from "./types";
 
 type AuthMode = "login" | "signup";
 
 const tokenKey = "ascend_token";
 
-const defaultGoalForm = {
+interface GoalForm {
+  mainGoal: string;
+  experienceLevel: ExperienceLevel;
+  timePerWeek: number;
+  interestsText: string;
+}
+
+const defaultGoalForm: GoalForm = {
   mainGoal: "",
-  experienceLevel: "beginner" as const,
+  experienceLevel: "beginner",
   timePerWeek: 5,
   interestsText: "",
 };
@@ -31,7 +39,7 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
-  const [goalForm, setGoalForm] = useState(defaultGoalForm);
+  const [goalForm, setGoalForm] = useState<GoalForm>(defaultGoalForm);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [treeNodes, setTreeNodes] = useState<SkillNode[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -45,7 +53,7 @@ function App() {
   const selectedGoal = dashboard?.goals.find((goal) => goal.id === selectedGoalId) ?? null;
   const selectedNode = treeNodes.find((node) => node.id === selectedNodeId) ?? null;
 
-  const refreshDashboard = async () => {
+  const refreshDashboard = useCallback(async () => {
     if (!token) {
       return;
     }
@@ -54,9 +62,9 @@ function App() {
     if (!selectedGoalId && data.goals[0]) {
       setSelectedGoalId(data.goals[0].id);
     }
-  };
+  }, [api, selectedGoalId, token]);
 
-  const loadGoalTree = async (goalId: string) => {
+  const loadGoalTree = useCallback(async (goalId: string) => {
     setTreeError(null);
     try {
       const data = await api.getGoalTree(goalId);
@@ -68,26 +76,32 @@ function App() {
       setTreeNodes([]);
       setTreeError(error instanceof Error ? error.message : "Could not load goal tree");
     }
-  };
+  }, [api, selectedNodeId]);
 
   useEffect(() => {
     if (!token) {
       return;
     }
-    refreshDashboard().catch((error) => {
-      const fallback = error instanceof Error ? error.message : "Failed to load dashboard";
-      setSystemMessage(fallback);
-    });
-  }, [token]);
+    const timeoutId = window.setTimeout(() => {
+      refreshDashboard().catch((error) => {
+        const fallback = error instanceof Error ? error.message : "Failed to load dashboard";
+        setSystemMessage(fallback);
+      });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [refreshDashboard, token]);
 
   useEffect(() => {
     if (!selectedGoalId) {
       return;
     }
-    loadGoalTree(selectedGoalId).catch((error) => {
-      setTreeError(error instanceof Error ? error.message : "Could not load tree");
-    });
-  }, [selectedGoalId]);
+    const timeoutId = window.setTimeout(() => {
+      loadGoalTree(selectedGoalId).catch((error) => {
+        setTreeError(error instanceof Error ? error.message : "Could not load tree");
+      });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadGoalTree, selectedGoalId]);
 
   const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -324,7 +338,7 @@ function App() {
                   onChange={(event) =>
                     setGoalForm((prev) => ({
                       ...prev,
-                      experienceLevel: event.target.value as GoalSummary["experienceLevel"],
+                      experienceLevel: event.target.value as ExperienceLevel,
                     }))
                   }
                 >

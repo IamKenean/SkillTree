@@ -230,7 +230,7 @@ export const generateInitialTree = ({
     category: "root",
   };
 
-  const secondLayer = baselineTracks.map((track, index) => {
+  const secondLayer: SkillNode[] = baselineTracks.map((track, index) => {
     const interestBoost = interests.length > 0 ? 1 : 0;
     return {
       id: nanoid(),
@@ -249,18 +249,18 @@ export const generateInitialTree = ({
     };
   });
 
-  const specializationSeed = triggerDefinitions
+  const specializationSeed: SkillNode[] = triggerDefinitions
     .filter((trigger) =>
       containsAny(`${mainGoal} ${interests.join(" ")}`, trigger.keywords),
     )
     .slice(0, 2)
     .flatMap((trigger) =>
-      trigger.branches.slice(0, 1).map((branch, i) => ({
+      trigger.branches.slice(0, 1).map((branch) => ({
         id: nanoid(),
         goalId,
         title: branch.title,
         description: branch.description,
-        difficulty: i === 0 ? "hard" : "elite",
+        difficulty: "hard",
         xpReward: branch.xpReward,
         estimatedHours: branch.estimatedHours,
         prerequisites: [secondLayer[1].id],

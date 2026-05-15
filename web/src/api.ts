@@ -1,4 +1,11 @@
-import { DashboardResponse, GoalSummary, ProgressEntry, PublicUser, SkillNode } from "./types";
+import type {
+  DashboardResponse,
+  Goal,
+  GoalSummary,
+  ProgressEntry,
+  PublicUser,
+  SkillNode,
+} from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
@@ -60,7 +67,7 @@ export const createApiClient = (token: string | null) => {
       timePerWeek: number;
       interests: string[];
     }) =>
-      request<{ goal: GoalSummary; nodes: SkillNode[] }>("/goals", {
+      request<{ goal: Goal; nodes: SkillNode[] }>("/goals", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
@@ -68,7 +75,7 @@ export const createApiClient = (token: string | null) => {
     listGoals: () => request<{ goals: GoalSummary[] }>("/goals"),
 
     getGoalTree: (goalId: string) =>
-      request<{ goal: GoalSummary; nodes: SkillNode[]; progressEntries: ProgressEntry[] }>(
+      request<{ goal: Goal; nodes: SkillNode[]; progressEntries: ProgressEntry[] }>(
         `/goals/${goalId}/tree`,
       ),
 

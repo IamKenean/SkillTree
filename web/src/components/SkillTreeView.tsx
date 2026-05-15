@@ -2,14 +2,12 @@ import { useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  Edge,
   MarkerType,
   MiniMap,
-  Node,
-  NodeMouseHandler,
 } from "reactflow";
+import type { Edge, Node, NodeMouseHandler } from "reactflow";
 import "reactflow/dist/style.css";
-import { SkillNode } from "../types";
+import type { SkillNode } from "../types";
 
 const statusColor = (status: SkillNode["status"]) => {
   if (status === "completed") {

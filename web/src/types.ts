@@ -12,7 +12,7 @@ export interface PublicUser {
   streak: number;
 }
 
-export interface GoalSummary {
+export interface Goal {
   id: string;
   userId: string;
   title: string;
@@ -20,6 +20,9 @@ export interface GoalSummary {
   timePerWeek: number;
   interests: string[];
   createdAt: string;
+}
+
+export interface GoalSummary extends Goal {
   totalNodes: number;
   completedNodes: number;
 }

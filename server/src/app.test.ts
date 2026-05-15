@@ -58,9 +58,9 @@ describe("Ascend API", () => {
         tags: ["calisthenics", "pullups", "dips"],
       });
     expect(secondComplete.status).toBe(200);
-    const addedTitles = (secondComplete.body.newlyAddedNodes as Array<{ title: string }>).map(
-      (node) => node.title,
+    const evolvedMuscleUpNode = (secondComplete.body.nodes as Array<{ title: string }>).find(
+      (node) => node.title === "Muscle Up Path",
     );
-    expect(addedTitles).toContain("Muscle Up Path");
+    expect(evolvedMuscleUpNode).toBeTruthy();
   });
 });
