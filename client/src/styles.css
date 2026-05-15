@@ -1,0 +1,118 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 800px at 20% -10%, rgba(47,147,255,0.18), transparent 60%),
+    radial-gradient(900px 700px at 110% 20%, rgba(177,108,255,0.16), transparent 60%),
+    radial-gradient(700px 600px at 50% 120%, rgba(255,181,71,0.12), transparent 60%),
+    #070811;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Star field overlay */
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.6), transparent 50%),
+    radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.5), transparent 50%),
+    radial-gradient(1.5px 1.5px at 50% 70%, rgba(255,255,255,0.4), transparent 50%),
+    radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.5), transparent 50%),
+    radial-gradient(1px 1px at 30% 90%, rgba(255,255,255,0.45), transparent 50%),
+    radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.5), transparent 50%),
+    radial-gradient(1.2px 1.2px at 10% 60%, rgba(255,255,255,0.4), transparent 50%);
+  background-size: 1000px 1000px;
+  opacity: 0.6;
+  z-index: 0;
+}
+
+#root { position: relative; z-index: 1; }
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-ink-800/70 backdrop-blur-md shadow-xl;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-br from-accent-500 to-accent-700 text-white shadow-glow hover:from-accent-400 hover:to-accent-600 active:scale-[0.98];
+  }
+  .btn-gold {
+    @apply btn bg-gradient-to-br from-gold-400 to-gold-600 text-ink-900 shadow-glow-gold hover:from-gold-400 hover:to-gold-500 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply btn border border-white/10 bg-white/5 text-slate-100 hover:bg-white/10;
+  }
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-ink-700/80 px-4 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/40;
+  }
+  .label { @apply text-sm font-medium text-slate-300; }
+  .chip {
+    @apply inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200;
+  }
+  .display { @apply font-display tracking-wider; }
+  .gradient-text {
+    background: linear-gradient(135deg, #56b5ff, #b16cff 50%, #ffd76b);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* React Flow tweaks for dark RPG feel */
+.react-flow__background {
+  background-color: transparent !important;
+}
+.react-flow__edge-path {
+  stroke: rgba(255,255,255,0.18);
+  stroke-width: 2;
+  transition: stroke 0.2s, stroke-width 0.2s;
+}
+.react-flow__edge.completed .react-flow__edge-path {
+  stroke: rgba(86,181,255,0.7);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(86,181,255,0.6));
+}
+.react-flow__edge.available .react-flow__edge-path {
+  stroke: rgba(255,215,107,0.4);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 4;
+  animation: dash 1.4s linear infinite;
+}
+@keyframes dash { to { stroke-dashoffset: -16; } }
+
+.react-flow__attribution { display: none !important; }
+.react-flow__controls {
+  background: rgba(20, 23, 51, 0.85) !important;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.react-flow__controls button {
+  background: transparent !important;
+  color: white !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+.react-flow__controls button:hover { background: rgba(255,255,255,0.08) !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
