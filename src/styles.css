@@ -394,6 +394,32 @@ textarea:focus {
   stroke: #6ee7ff;
 }
 
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid rgba(110, 231, 255, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.react-flow__controls-button {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  color: #dff9ff;
+  background: rgba(15, 23, 42, 0.94);
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(30, 41, 59, 0.96);
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow__minimap {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
 .node-meta {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
