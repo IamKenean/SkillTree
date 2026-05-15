@@ -1,0 +1,316 @@
+:root {
+  font-family: "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+  color: #f8f9ff;
+  background-color: #080a11;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(131, 62, 255, 0.22), transparent 35%),
+    radial-gradient(circle at 100% 0%, rgba(46, 223, 184, 0.14), transparent 30%),
+    #080a11;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(14, 17, 29, 0.88);
+  color: #f8f9ff;
+  border-radius: 10px;
+  padding: 0.62rem 0.75rem;
+  width: 100%;
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+button {
+  border: none;
+  background: linear-gradient(135deg, #8e61ff, #58c7ff);
+  color: #f8f9ff;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  background: rgba(13, 17, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 1.3rem;
+  display: grid;
+  gap: 1rem;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+}
+
+.app-layout {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(11, 14, 25, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 0.95rem 1.05rem;
+}
+
+.eyebrow {
+  color: #9ca3c7;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+}
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 0.4rem 0.66rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.84rem;
+}
+
+.ghost {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.overview-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 280px minmax(0, 1fr) 330px;
+  min-height: 65vh;
+}
+
+.panel {
+  background: rgba(13, 17, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.tree-panel {
+  overflow: hidden;
+}
+
+.skill-tree-surface {
+  height: 100%;
+  min-height: 440px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.compact {
+  gap: 0.5rem;
+}
+
+.row {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.subtle {
+  color: #b9bfd8;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #ff7c8d;
+}
+
+.success {
+  color: #53e7a3;
+}
+
+.goal-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.goal-item {
+  text-align: left;
+  display: grid;
+  gap: 0.15rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.goal-item.active {
+  border: 1px solid rgba(174, 132, 255, 0.55);
+}
+
+.goal-item span {
+  color: #bcc2da;
+  font-size: 0.84rem;
+}
+
+.progress-wrap {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar div {
+  height: 100%;
+  background: linear-gradient(90deg, #8e61ff, #53e7a3);
+}
+
+.stats-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stats-grid div {
+  display: grid;
+  gap: 0.2rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 0.65rem;
+}
+
+.stats-grid strong {
+  font-size: 1.3rem;
+}
+
+.meta-grid {
+  display: grid;
+  gap: 0.35rem;
+  color: #ccd2ea;
+  font-size: 0.9rem;
+}
+
+.achievement-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.achievement-list li {
+  display: grid;
+  gap: 0.2rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 0.6rem;
+}
+
+.achievement-list span {
+  color: #c6cce3;
+  font-size: 0.85rem;
+}
+
+.pill-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.pill.active {
+  background: linear-gradient(135deg, #8e61ff, #58c7ff);
+}
+
+.system-message {
+  color: #c7b7ff;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #adb4ce;
+}
+
+@media (max-width: 1220px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
