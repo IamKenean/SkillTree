@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #070a12;
+  --surface: #0f1424;
+  --surface2: #151c32;
+  --border: rgba(148, 163, 184, 0.12);
+  --glow: rgba(56, 189, 248, 0.35);
+  --accent: #38bdf8;
+  --accent2: #a78bfa;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(56, 189, 248, 0.12), transparent),
+    radial-gradient(900px 500px at 90% 0%, rgba(167, 139, 250, 0.1), transparent), var(--bg);
+  color: #e2e8f0;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+  }
+  50% {
+    box-shadow: 0 0 24px 2px var(--glow);
+  }
+}
+
+.animate-unlock {
+  animation: pulse-glow 1.2s ease-in-out 2;
+}

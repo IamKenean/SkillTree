@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  username         String
+  passwordHash     String
+  avatarEmoji      String   @default("🧑‍🚀")
+  totalXp          Int      @default(0)
+  level            Int      @default(1)
+  streakDays       Int      @default(0)
+  lastProgressDate DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  goals            Goal[]
+}
+
+model Goal {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  experience     String
+  hoursPerWeek   Float    @default(3)
+  interests      String   @default("")
+  summary        String   @default("")
+  treeJson       String
+  focusSignals   String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  completions    NodeCompletion[]
+}
+
+model NodeCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  goalId      String
+  nodeId      String
+  journal     String   @default("")
+  proofUrl    String   @default("")
+  xpGranted   Int      @default(0)
+  completedAt DateTime @default(now())
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, goalId, nodeId])
+  @@index([goalId])
+}
