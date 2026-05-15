@@ -10,9 +10,9 @@ export function XpToast({ xp, message }: { xp: number | null; message?: string }
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: -10, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 240, damping: 20 }}
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[60]"
         >
-          <div className="card px-6 py-4 border-gold-500/50 shadow-glow-gold">
+          <div className="rounded-2xl px-6 py-4 border-2 border-gold-500/60 shadow-glow-gold bg-ink-900/95 backdrop-blur-md">
             <p className="display text-xs tracking-[0.3em] text-gold-300 uppercase mb-1">{message || 'Skill Unlocked'}</p>
             <p className="display text-2xl font-black gradient-text">+{xp} XP</p>
           </div>

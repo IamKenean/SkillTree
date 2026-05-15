@@ -106,8 +106,8 @@ function recomputeAvailability(goalId) {
   tx();
 }
 
-function persistTree(goalId, tree, { existingIds = new Set() } = {}) {
-  computeLayout(tree.nodes, tree.edges);
+function persistTree(goalId, tree, { existingIds = new Set(), skipLayout = false } = {}) {
+  if (!skipLayout) computeLayout(tree.nodes, tree.edges);
   const insertNode = db.prepare(`
     INSERT INTO skill_nodes (id, goal_id, title, description, difficulty, xp_reward, est_minutes, tags, branch, tier, position_x, position_y, status, is_hidden, proof_required, rarity)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -310,16 +310,23 @@ app.post('/api/goals/:id/evolve', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Complete at least 2 nodes before evolving the tree.' });
   }
 
-  // Detect focus tags
+  // Detect focus tags (case-insensitive dedupe)
   const tagCounts = {};
+  const tagDisplay = {};
+  function bump(rawTag) {
+    if (!rawTag) return;
+    const k = rawTag.toLowerCase();
+    tagCounts[k] = (tagCounts[k] || 0) + 1;
+    if (!tagDisplay[k]) tagDisplay[k] = rawTag;
+  }
   for (const n of completed) {
-    for (const t of n.tags || []) tagCounts[t] = (tagCounts[t] || 0) + 1;
-    if (n.branch) tagCounts[n.branch] = (tagCounts[n.branch] || 0) + 1;
+    for (const t of n.tags || []) bump(t);
+    bump(n.branch);
   }
   const focusTags = Object.entries(tagCounts)
     .filter(([k]) => k && k !== 'root' && k !== 'branch-root')
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5).map(([k]) => k);
+    .slice(0, 5).map(([k]) => tagDisplay[k]);
 
   const existingIds = new Set(parsedNodes.map(n => n.id));
   let evolution;
@@ -339,19 +346,29 @@ app.post('/api/goals/:id/evolve', authMiddleware, async (req, res) => {
     return res.json({ added: 0, focusTags });
   }
 
-  // Lay out new nodes relative to existing — extend below max y
-  const allNodes = parsedNodes.concat(evolution.nodes);
-  computeLayout(allNodes, edges.concat(evolution.edges));
-  persistTree(goal.id, { nodes: allNodes, edges: evolution.edges }, { existingIds });
+  // Position new nodes relative to their anchors, without disturbing existing positions.
+  const existingById = new Map(parsedNodes.map(n => [n.id, n]));
+  const TIER_GAP = 170;
+  const SIBLING_GAP = 220;
+  // Group new nodes by anchor (first prereq that exists)
+  const newByAnchor = new Map();
+  for (const n of evolution.nodes) {
+    const anchorId = n.prerequisites?.find(p => existingById.has(p)) || parsedNodes[0]?.id;
+    if (!newByAnchor.has(anchorId)) newByAnchor.set(anchorId, []);
+    newByAnchor.get(anchorId).push(n);
+  }
+  for (const [anchorId, list] of newByAnchor.entries()) {
+    const anchor = existingById.get(anchorId);
+    const baseX = anchor?.position_x ?? 0;
+    const baseY = anchor?.position_y ?? 0;
+    list.forEach((n, idx) => {
+      const offset = (idx - (list.length - 1) / 2) * SIBLING_GAP * 0.5;
+      n.position_x = baseX + offset;
+      n.position_y = baseY + TIER_GAP * (1 + Math.floor(idx / 3));
+    });
+  }
 
-  // Update positions of existing nodes (in case layout moved them)
-  const upd = db.prepare('UPDATE skill_nodes SET position_x = ?, position_y = ? WHERE id = ?');
-  const tx = db.transaction(() => {
-    for (const n of allNodes) {
-      upd.run(n.position_x, n.position_y, n.id);
-    }
-  });
-  tx();
+  persistTree(goal.id, { nodes: evolution.nodes, edges: evolution.edges }, { existingIds, skipLayout: true });
 
   res.json({
     added: evolution.nodes.length,
