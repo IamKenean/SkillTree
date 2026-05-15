@@ -93,7 +93,7 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTre
         <Background color="#284164" gap={28} />
         <MiniMap
           nodeColor={(node) => {
-            const status = node.data.skill.status;
+            const status = (node.data as SkillNodeData).skill.status;
             if (status === 'complete') return '#34d399';
             if (status === 'unlocked') return '#6ee7ff';
             return '#334155';
