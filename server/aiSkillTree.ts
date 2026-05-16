@@ -269,8 +269,11 @@ Rules:
 - The selected node is the parent of the first layer of returned nodes.
 - Do NOT return a new root, start, overview, or journey wrapper node. Return only actual skills that branch from the selected node.
 - Every child id in returned nodes must have a matching object in returned "nodes"; no phantom children.
-- Make the expansion deeper than one level: at least one returned child must itself have 2 children.
-- Continue the selected branch identity, but introduce a more specific specialization.
+- Make the expansion deeper than one level: at least one returned child must itself have 1 to 2 children.
+- Continue the selected branch identity, but each new node must add a NEW concrete capability to the previous one.
+- Think like progression: spark -> controlled flame -> firebolt -> fireball -> solar flare. For social growth: warm opener -> playful exchange -> clear invitation -> graceful response. Do this for the user's real goal.
+- Never use generic/meta titles such as "Feedback Loop", "Pressure Test", "Advanced X", "X Mastery Branch", or titles that simply repeat the selected node with a suffix.
+- Do not include the selected node title inside new node titles unless it is truly a natural named skill.
 - Include at least one tradeoff and one hidden future node with unlockCondition.
 - Do not duplicate existing node titles or ids.`;
 }
@@ -291,6 +294,7 @@ export function expandSkillTreeFromAiBranch(
   if (newBlueprints.length < 2) {
     throw new Error('AI branch expansion did not include enough new nodes.');
   }
+  assertBranchExpansionQuality(newBlueprints, selected);
   const idMap = createIdMap(
     newBlueprints.map((node) => node.id),
     `${selected.id}-growth`,
@@ -398,48 +402,48 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
     JSON.stringify({
       nodes: [
         {
-          id: 'focused_drill_path',
-          title: `${selected.title} Drill Path`,
-          description: `A deeper practice branch for ${selected.title}, tuned toward ${focus}.`,
-          children: ['feedback_loop_drill', 'pressure_test_drill'],
+          id: 'first_real_rep',
+          title: 'First Real Rep',
+          description: `Practice the smallest real version of this path, tuned toward ${focus}.`,
+          children: ['controlled_upgrade', 'real_world_attempt'],
           difficulty: nextDifficulty(selected.difficulty),
           branch,
           identity: `${selected.identity ?? selected.branch} Specialist`,
-          tradeoff: 'Focused depth vs broader exploration',
-          proofPrompt: `Complete a focused drill for ${selected.title}.`,
+          tradeoff: 'Small consistent action vs waiting for confidence',
+          proofPrompt: 'Complete one low-stakes real rep and write what happened.',
         },
         {
-          id: 'feedback_loop_drill',
-          title: `${selected.title} Feedback Loop`,
-          description: 'Review proof, identify a pattern, and choose the next adjustment.',
-          children: ['hidden_mastery_branch'],
+          id: 'controlled_upgrade',
+          title: 'Controlled Upgrade',
+          description: 'Add one harder constraint, more stakes, or more precision to the first rep.',
+          children: ['signature_move'],
           difficulty: 'adept',
           branch,
-          identity: 'Reflective Specialist',
-          tradeoff: 'Analysis depth vs practice volume',
-          proofPrompt: 'Write one review with a next-step decision.',
+          identity: 'Capability Builder',
+          tradeoff: 'More challenge vs clean execution',
+          proofPrompt: 'Repeat the rep with one deliberate upgrade.',
         },
         {
-          id: 'pressure_test_drill',
-          title: `${selected.title} Pressure Test`,
-          description: 'Apply this skill under time, fatigue, audience, or real-world constraints.',
-          children: ['hidden_mastery_branch'],
+          id: 'real_world_attempt',
+          title: 'Real-World Attempt',
+          description: 'Use the skill in the actual environment where it matters.',
+          children: ['signature_move'],
           difficulty: 'expert',
           branch,
-          identity: 'Pressure Performer',
-          tradeoff: 'Performance pressure vs clean technique',
-          proofPrompt: 'Record one pressure-tested attempt.',
+          identity: 'Applied Performer',
+          tradeoff: 'Real stakes vs perfect preparation',
+          proofPrompt: 'Log one real-world attempt and the outcome.',
         },
         {
-          id: 'hidden_mastery_branch',
-          title: `${selected.title} Mastery Branch`,
-          description: 'A hidden advanced branch that opens after repeated proof patterns.',
+          id: 'signature_move',
+          title: 'Signature Move',
+          description: 'Turn repeated proof into a confident personal version of this capability.',
           children: [],
           difficulty: 'legendary',
           branch,
-          identity: 'Branch Master',
+          identity: 'Signature Specialist',
           tradeoff: 'Specialization vs adaptability',
-          proofPrompt: 'Summarize repeated proof and the unlocked advanced target.',
+          proofPrompt: 'Show repeated proof and name the next signature-level challenge.',
           hidden: true,
           unlockCondition: `Unlock after repeated ${focus} proof on ${selected.title}.`,
         },
@@ -447,6 +451,18 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
     }),
     now,
   );
+}
+
+function assertBranchExpansionQuality(nodes: Array<z.output<typeof aiNodeSchema>>, selected: SkillNode): void {
+  const selectedTitle = selected.title.toLowerCase();
+  const banned = /\b(feedback loop|pressure test|advanced advanced|mastery branch)\b/i;
+  const badTitle = nodes.find((node) => {
+    const title = node.title.toLowerCase();
+    return banned.test(title) || title.startsWith(`${selectedTitle} `);
+  });
+  if (badTitle) {
+    throw new Error(`AI branch expansion used a generic or recursive title: ${badTitle.title}`);
+  }
 }
 
 function assertNoPhantomChildren(nodes: Array<{ id: string; children: string[] }>): void {

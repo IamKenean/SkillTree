@@ -22,6 +22,13 @@ const starterGoal: GoalInput = {
   interests: 'pushups, dips, pullups, handstands',
 };
 
+const blankGoal: GoalInput = {
+  title: '',
+  experienceLevel: 'Beginner',
+  weeklyHours: 4,
+  interests: '',
+};
+
 function App() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
@@ -277,7 +284,7 @@ function AuthScreen({
 }
 
 function GoalCreator({ onCreate, disabled }: { onCreate: (input: GoalInput) => void; disabled: boolean }) {
-  const [input, setInput] = useState<GoalInput>(starterGoal);
+  const [input, setInput] = useState<GoalInput>(blankGoal);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -292,7 +299,12 @@ function GoalCreator({ onCreate, disabled }: { onCreate: (input: GoalInput) => v
       </div>
       <label>
         Main goal
-        <textarea value={input.title} onChange={(event) => setInput({ ...input, title: event.target.value })} />
+        <textarea
+          required
+          value={input.title}
+          placeholder="Describe anything you want to grow into: start a garden, gain social skills, ask someone out, work out, learn chess, become your best self..."
+          onChange={(event) => setInput({ ...input, title: event.target.value })}
+        />
       </label>
       <label>
         Experience level
@@ -312,8 +324,12 @@ function GoalCreator({ onCreate, disabled }: { onCreate: (input: GoalInput) => v
         />
       </label>
       <label>
-        Interests
-        <input value={input.interests} onChange={(event) => setInput({ ...input, interests: event.target.value })} />
+        Optional context
+        <input
+          value={input.interests}
+          placeholder="Optional: constraints, style, fears, interests, or examples"
+          onChange={(event) => setInput({ ...input, interests: event.target.value })}
+        />
       </label>
       <button className="primary-button" disabled={disabled} type="submit">
         <Plus size={16} /> Generate
@@ -422,9 +438,9 @@ function NodeDetail({
   onGrowBranch: (nodeId: string, signals: string[]) => void;
 }) {
   const [note, setNote] = useState('Finished a focused practice rep and logged what improved.');
-  const [tags, setTags] = useState('pushups, dips, pullups');
+  const [tags, setTags] = useState('');
   const [proofUrl, setProofUrl] = useState('');
-  const [signals, setSignals] = useState('pushups, dips, pullups, handstands');
+  const [signals, setSignals] = useState('');
 
   const prerequisites = useMemo(
     () => node.prerequisites.map((id) => tree.nodes.find((candidate) => candidate.id === id)?.title ?? id),
@@ -506,7 +522,11 @@ function NodeDetail({
       <div className="adapt-box">
         <strong>Grow this branch</strong>
         <p className="muted">Feed this node and your signals back into AI to add deeper child nodes.</p>
-        <input value={signals} onChange={(event) => setSignals(event.target.value)} />
+        <input
+          value={signals}
+          placeholder="Optional: what happened, what you want next, or what style you prefer"
+          onChange={(event) => setSignals(event.target.value)}
+        />
         <button
           className="secondary-button"
           disabled={disabled}
@@ -536,7 +556,11 @@ function NodeDetail({
           </label>
           <label>
             Focus tags
-            <input value={tags} onChange={(event) => setTags(event.target.value)} />
+            <input
+              value={tags}
+              placeholder="Optional: what this proof focused on"
+              onChange={(event) => setTags(event.target.value)}
+            />
           </label>
           <label>
             Proof URL
@@ -551,7 +575,11 @@ function NodeDetail({
       <div className="adapt-box">
         <strong>Adaptive evolution</strong>
         <p className="muted">Add repeated signals and Ascend creates a new specialization branch.</p>
-        <input value={signals} onChange={(event) => setSignals(event.target.value)} />
+        <input
+          value={signals}
+          placeholder="Optional: repeated patterns, interests, or proof signals"
+          onChange={(event) => setSignals(event.target.value)}
+        />
         <button
           className="secondary-button"
           disabled={disabled}

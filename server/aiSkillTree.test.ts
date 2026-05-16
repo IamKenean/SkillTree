@@ -297,4 +297,47 @@ describe('Gemini skill tree conversion', () => {
     expect(expanded.edges.some((edge) => edge.source === selected.id && edge.target === candidTiming?.id)).toBe(true);
     expect(expanded.edges.some((edge) => edge.source === selected.id && edge.target === urbanLayering?.id)).toBe(true);
   });
+
+  it('rejects recursive generic branch-growth titles', () => {
+    const tree = generateSkillTree({
+      title: 'I want to ask my crush out',
+      experienceLevel: 'Beginner',
+      weeklyHours: 2,
+      interests: 'confidence, conversation',
+    });
+    const selected = tree.nodes[0];
+
+    expect(() =>
+      expandSkillTreeFromAiBranch(
+        tree,
+        selected.id,
+        JSON.stringify({
+          nodes: [
+            {
+              id: 'bold_feedback',
+              title: `${selected.title} Feedback Loop`,
+              description: 'This recursive meta node should be rejected.',
+              children: [],
+              difficulty: 'apprentice',
+              branch: 'social-growth',
+              identity: 'Bold Initiator',
+              tradeoff: 'Reflection vs action',
+              proofPrompt: 'Rejected generic prompt.',
+            },
+            {
+              id: 'bold_pressure',
+              title: 'Clear Invitation',
+              description: 'This recursive pressure node should be rejected.',
+              children: [],
+              difficulty: 'adept',
+              branch: 'social-growth',
+              identity: 'Bold Initiator',
+              tradeoff: 'Pressure vs confidence',
+              proofPrompt: 'Rejected generic prompt.',
+            },
+          ],
+        }),
+      ),
+    ).toThrow(/generic or recursive title/i);
+  });
 });
