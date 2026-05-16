@@ -1662,6 +1662,7 @@ export function generateSkillTree(input: GoalInput, now = new Date().toISOString
 
   return {
     id: `${rootId}-${Date.now().toString(36)}`,
+    generationSource: 'blueprint',
     rootGoal: input.title,
     experienceLevel: input.experienceLevel,
     weeklyHours: input.weeklyHours,

@@ -8,8 +8,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { adaptSkillTree, completeNode, generateSkillTree, parseInterests } from '../src/shared/skillTree.js';
+import { adaptSkillTree, completeNode } from '../src/shared/skillTree.js';
 import type { DashboardPayload, GoalSummary, PublicUser, SkillTree } from '../src/shared/types.js';
+import { createSkillTreeGenerator, type TreeGenerator } from './aiSkillTree.js';
 import { JsonStore, type UserRecord } from './dataStore.js';
 
 const authSchema = z.object({
@@ -44,6 +45,7 @@ export type AppOptions = {
   store: JsonStore;
   jwtSecret?: string;
   serveStatic?: boolean;
+  treeGenerator?: TreeGenerator;
 };
 
 function signToken(user: PublicUser, jwtSecret: string): string {
@@ -72,7 +74,12 @@ function summarize(goal: SkillTree): GoalSummary {
   };
 }
 
-export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-secret', serveStatic = false }: AppOptions) {
+export function createApp({
+  store,
+  jwtSecret = process.env.JWT_SECRET ?? 'dev-secret',
+  serveStatic = false,
+  treeGenerator = createSkillTreeGenerator(),
+}: AppOptions) {
   const app = express();
 
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -163,7 +170,7 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
   app.post('/api/goals', requireAuth, async (req: AuthenticatedRequest, res, next) => {
     try {
       const input = goalSchema.parse(req.body);
-      const tree = generateSkillTree({ ...input, interests: parseInterests(input.interests).join(', ') });
+      const tree = await treeGenerator(input);
       await store.update((data) => {
         data.goals[req.user!.id] = [tree, ...(data.goals[req.user!.id] ?? [])];
       });

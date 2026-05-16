@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { generateSkillTree } from '../src/shared/skillTree.js';
 import { createApp } from './app.js';
 import { JsonStore } from './dataStore.js';
 
@@ -21,6 +22,7 @@ describe('Ascend API', () => {
     const app = createApp({
       store: new JsonStore(join(tempDir, 'db.json')),
       jwtSecret: 'test-secret',
+      treeGenerator: async (input) => generateSkillTree(input),
     });
 
     const signup = await request(app)

@@ -61,6 +61,7 @@ export type GoalInput = {
 
 export type SkillTree = {
   id: string;
+  generationSource?: 'blueprint' | 'gemini';
   rootGoal: string;
   experienceLevel: string;
   weeklyHours: number;
