@@ -30,9 +30,9 @@ const aiNodeSchema = z.object({
 const aiGraphSchema = z.object({
   root: aiNodeSchema.extend({
     difficulty: z.literal('starter').default('starter'),
-    children: z.array(z.string().min(2).max(48)).min(2).max(4),
+    children: z.array(z.string().min(2).max(48)).min(2).max(3),
   }),
-  nodes: z.array(aiNodeSchema).min(10).max(32),
+  nodes: z.array(aiNodeSchema).min(2).max(8),
 });
 
 const aiBranchExpansionSchema = z.object({
@@ -161,7 +161,7 @@ export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now
 }
 
 function buildPrompt(input: GoalInput): string {
-  return `Create a personalized, nonlinear RPG skill tree for Ascend.
+  return `Create a SMALL personalized starter skill tree for Ascend.
 
 User goal: ${input.title}
 Experience level: ${input.experienceLevel}
@@ -174,47 +174,35 @@ Return only valid JSON matching:
   "nodes": [{"id": "...", "title": "...", "description": "...", "children": ["...", "..."], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "hidden": false, "unlockCondition": "..."}]
 }
 
-Example shape to imitate for depth and child creation:
+Example shape to imitate for the INITIAL chart:
 {
   "root": {
-    "id": "photo_start",
-    "title": "Start Photography Journey",
-    "description": "Learn camera control and composition, then choose a genre path.",
-    "children": ["camera_basics", "composition_foundation"],
+    "id": "chess_start",
+    "title": "Start Chess",
+    "description": "Choose the first identity direction for your chess journey.",
+    "children": ["calculation_style", "strategy_style"],
     "difficulty": "starter",
     "branch": "origin",
-    "identity": "Visual Explorer",
-    "tradeoff": "Technical control vs creative instinct",
-    "proofPrompt": "Take 10 intentional photos and write what you controlled."
+    "identity": "Chess Explorer",
+    "tradeoff": "Calculation vs strategic understanding",
+    "proofPrompt": "Play one game and write which style felt more natural."
   },
   "nodes": [
-    {"id": "camera_basics", "title": "Understand Camera Settings (ISO, Shutter, Aperture)", "description": "Learn exposure as creative control.", "children": ["manual_control", "low_light_focus"], "difficulty": "apprentice", "branch": "technical", "identity": "Camera Technician", "tradeoff": "Control vs speed", "proofPrompt": "Shoot one subject with three exposure settings."},
-    {"id": "composition_foundation", "title": "Learn Composition (Rule of Thirds, Framing)", "description": "Control attention inside the frame.", "children": ["street_photography_path", "portrait_path"], "difficulty": "apprentice", "branch": "composition", "identity": "Composer", "tradeoff": "Structure vs intuition", "proofPrompt": "Create three framing variations."},
-    {"id": "manual_control", "title": "Shoot Fully in Manual Mode", "description": "Make exposure choices deliberately.", "children": ["technical_mastery", "creative_control"], "difficulty": "adept", "branch": "technical", "identity": "Manual Shooter", "tradeoff": "Precision vs spontaneity", "proofPrompt": "Shoot one session fully manual."},
-    {"id": "low_light_focus", "title": "Low Light Photography", "description": "Work with noise, motion blur, and mood.", "children": ["night_street", "cinematic_style"], "difficulty": "adept", "branch": "low-light", "identity": "Low-Light Shooter", "tradeoff": "Mood vs clarity", "proofPrompt": "Shoot five low-light frames."},
-    {"id": "street_photography_path", "title": "Street Photography Path", "description": "Capture timing, gesture, and public life.", "children": ["candid_mastery", "storytelling_focus"], "difficulty": "adept", "branch": "street", "identity": "Street Photographer", "tradeoff": "Candid truth vs composed control", "proofPrompt": "Shoot a street set."},
-    {"id": "portrait_path", "title": "Portrait Photography Path", "description": "Shape expression, pose, and trust.", "children": ["lighting_mastery", "model_direction"], "difficulty": "adept", "branch": "portrait", "identity": "Portrait Maker", "tradeoff": "Direction vs authenticity", "proofPrompt": "Shoot a portrait session."},
-    {"id": "candid_mastery", "title": "Capture Candid Moments", "description": "Anticipate human moments without overdirecting.", "children": ["documentary_style", "human_stories"], "difficulty": "expert", "branch": "street", "identity": "Candid Hunter", "tradeoff": "Patience vs intervention", "proofPrompt": "Capture three candid moments."},
-    {"id": "lighting_mastery", "title": "Master Lighting (Natural + Artificial)", "description": "Shape mood and attention with light.", "children": ["studio_work", "commercial_photography"], "difficulty": "expert", "branch": "portrait", "identity": "Lighting Specialist", "tradeoff": "Controlled polish vs natural feel", "proofPrompt": "Shoot natural and artificial light."},
-    {"id": "cinematic_style", "title": "Cinematic Photo Style", "description": "Use light, color, crop, and sequence.", "children": ["color_grading", "visual_storytelling"], "difficulty": "expert", "branch": "cinematic", "identity": "Cinematic Artist", "tradeoff": "Stylization vs realism", "proofPrompt": "Edit five images into one look."},
-    {"id": "commercial_photography", "title": "Commercial / Paid Work Ready", "description": "Translate taste into client-ready output.", "children": ["portfolio_building", "client_work"], "difficulty": "legendary", "branch": "commercial", "identity": "Commercial Shooter", "tradeoff": "Personal style vs client clarity", "proofPrompt": "Create a mock client brief.", "hidden": true, "unlockCondition": "Unlock after repeated portrait, lighting, or portfolio proof."},
-    {"id": "technical_mastery", "title": "Technical Mastery", "description": "Control focus, exposure, and repeatable quality.", "children": [], "difficulty": "expert", "branch": "technical", "identity": "Technical Specialist", "tradeoff": "Consistency vs experimentation", "proofPrompt": "Create a technically consistent mini-series."},
-    {"id": "creative_control", "title": "Creative Control", "description": "Use constraints to create a deliberate look.", "children": [], "difficulty": "expert", "branch": "creative", "identity": "Creative Director", "tradeoff": "Experimentation vs consistency", "proofPrompt": "Shoot one concept with a deliberate constraint."},
-    {"id": "night_street", "title": "Night Street", "description": "Use city light, reflections, blur, and contrast.", "children": [], "difficulty": "expert", "branch": "street", "identity": "Night Walker", "tradeoff": "Atmosphere vs sharpness", "proofPrompt": "Create a night street sequence."},
-    {"id": "portfolio_building", "title": "Portfolio Building", "description": "Curate a tight body of work.", "children": [], "difficulty": "expert", "branch": "career", "identity": "Portfolio Builder", "tradeoff": "Focus vs range", "proofPrompt": "Select 12 images and explain the audience."},
-    {"id": "client_work", "title": "Client Work", "description": "Manage brief, delivery, revisions, and expectations.", "children": [], "difficulty": "legendary", "branch": "career", "identity": "Working Photographer", "tradeoff": "Client needs vs artistic voice", "proofPrompt": "Complete a mock-client shoot.", "hidden": true, "unlockCondition": "Unlock after portfolio and commercial readiness proof."}
+    {"id": "calculation_style", "title": "Calculation-Based Player", "description": "Develop through tactics, forcing lines, and concrete move-by-move reading.", "children": [], "difficulty": "apprentice", "branch": "calculation", "identity": "Calculator", "tradeoff": "Sharp tactics vs long-term planning", "proofPrompt": "Solve 10 tactics and note which motif repeats."},
+    {"id": "strategy_style", "title": "Strategy-Based Player", "description": "Develop through plans, positional choices, endgames, and long-term pressure.", "children": [], "difficulty": "apprentice", "branch": "strategy", "identity": "Strategist", "tradeoff": "Long-term pressure vs immediate tactics", "proofPrompt": "Review one game and identify the main plan."}
   ]
 }
 
 Rules:
-- The root must have at least 2 meaningful children.
+- This is only the initial seed chart. Keep it small and clean.
+- Include exactly 2 to 4 root children and exactly 2 to 6 nodes total.
+- Root children should be broad identity/style choices.
+- Do NOT generate a full deep tree initially. Deeper nodes are created later when the user clicks "Grow selected branch".
+- For the initial chart, non-root nodes should usually have empty children arrays.
 - Every child id listed anywhere must have a matching object in "nodes"; never reference phantom children.
-- Every non-terminal node should have 2 meaningful children when possible, and those children must continue deeper at least one more level unless they are terminal mastery nodes.
-- Each branch must represent a different style, identity, or specialization path.
+- Each root branch must represent a different style, identity, or specialization path.
 - Include tradeoffs such as speed vs accuracy, tactical vs positional, creative vs technical, strength vs endurance.
-- Include 14 to 28 nodes total.
-- Include at least 2 hidden future nodes with unlockCondition based on repeated behavior/proof patterns.
-- Avoid straight-line checklists; create divergent identities and career/style paths.
+- Avoid checklist steps. Prefer identity choices like "Calculation-Based Player" vs "Strategy-Based Player".
 - Use concise titles and concrete proof prompts.`;
 }
 
