@@ -30,9 +30,9 @@ const aiNodeSchema = z.object({
 const aiGraphSchema = z.object({
   root: aiNodeSchema.extend({
     difficulty: z.literal('starter').default('starter'),
-    children: z.array(z.string().min(2).max(48)).min(2).max(3),
+    children: z.array(z.string().min(2).max(48)).min(2).max(8),
   }),
-  nodes: z.array(aiNodeSchema).min(2).max(8),
+  nodes: z.array(aiNodeSchema).min(2).max(16),
 });
 
 const aiBranchExpansionSchema = z.object({
@@ -92,7 +92,7 @@ export function createBranchExpander(apiKey = process.env.GEMINI_API_KEY): Branc
 }
 
 export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now = new Date().toISOString()): SkillTree {
-  const graph = aiGraphSchema.parse(JSON.parse(stripJson(rawJson)));
+  const graph = normalizeSeedGraph(aiGraphSchema.parse(JSON.parse(stripJson(rawJson))));
   const all = [graph.root, ...graph.nodes];
   assertNoPhantomChildren(all);
   const rootSlug = slug(input.title) || 'personal-growth';
@@ -157,6 +157,29 @@ export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now
     streak: 0,
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function normalizeSeedGraph(graph: z.infer<typeof aiGraphSchema>): z.infer<typeof aiGraphSchema> {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const rootChildren = graph.root.children.filter((id) => nodesById.has(id)).slice(0, 2);
+  const selectedNodes = rootChildren.map((id) => nodesById.get(id)!);
+
+  if (selectedNodes.length < 2) {
+    throw new Error('AI seed tree must include at least two valid root children.');
+  }
+
+  return {
+    root: {
+      ...graph.root,
+      children: rootChildren,
+    },
+    nodes: selectedNodes.map((node) => ({
+      ...node,
+      children: [],
+      hidden: false,
+      unlockCondition: undefined,
+    })),
   };
 }
 

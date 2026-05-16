@@ -59,6 +59,107 @@ describe('Gemini skill tree conversion', () => {
     expect(tree.nodes.slice(1).every((node) => node.prerequisites.length === 1)).toBe(true);
   });
 
+  it('normalizes over-generated Gemini seed graphs instead of falling back', () => {
+    const tree = buildSkillTreeFromAiGraph(
+      {
+        title: 'I want to learn chess',
+        experienceLevel: 'Beginner',
+        weeklyHours: 4,
+        interests: 'tactics, openings',
+      },
+      JSON.stringify({
+        root: {
+          id: 'chess_start',
+          title: 'Start Chess',
+          description: 'Choose an initial chess identity direction.',
+          children: ['calculation_style', 'strategy_style', 'opening_style', 'endgame_style'],
+          difficulty: 'starter',
+          branch: 'origin',
+          identity: 'Chess Explorer',
+          tradeoff: 'Calculation vs strategy',
+          proofPrompt: 'Play one game and note your preferred style.',
+        },
+        nodes: [
+          {
+            id: 'calculation_style',
+            title: 'Calculation-Based Player',
+            description: 'Develop through tactics and forcing lines.',
+            children: ['tactics_depth'],
+            difficulty: 'apprentice',
+            branch: 'calculation',
+            identity: 'Calculator',
+            tradeoff: 'Sharp tactics vs long-term planning',
+            proofPrompt: 'Solve 10 tactics.',
+          },
+          {
+            id: 'strategy_style',
+            title: 'Strategy-Based Player',
+            description: 'Develop through plans and positional choices.',
+            children: ['positional_depth'],
+            difficulty: 'apprentice',
+            branch: 'strategy',
+            identity: 'Strategist',
+            tradeoff: 'Long-term pressure vs immediate tactics',
+            proofPrompt: 'Review one strategic game.',
+          },
+          {
+            id: 'opening_style',
+            title: 'Opening-Based Player',
+            description: 'Develop through repertoire and opening plans.',
+            children: [],
+            difficulty: 'apprentice',
+            branch: 'opening',
+            identity: 'Prepared Player',
+            tradeoff: 'Preparation vs flexibility',
+            proofPrompt: 'Write one opening note.',
+          },
+          {
+            id: 'endgame_style',
+            title: 'Endgame-Based Player',
+            description: 'Develop through conversion and simplified positions.',
+            children: [],
+            difficulty: 'apprentice',
+            branch: 'endgame',
+            identity: 'Endgame Grinder',
+            tradeoff: 'Conversion skill vs attacking initiative',
+            proofPrompt: 'Study one pawn ending.',
+          },
+          {
+            id: 'tactics_depth',
+            title: 'Tactics Depth',
+            description: 'Deeper tactics node that should wait for branch growth.',
+            children: [],
+            difficulty: 'adept',
+            branch: 'calculation',
+            identity: 'Tactician',
+            tradeoff: 'Speed vs accuracy',
+            proofPrompt: 'Solve harder tactics.',
+          },
+          {
+            id: 'positional_depth',
+            title: 'Positional Depth',
+            description: 'Deeper strategy node that should wait for branch growth.',
+            children: [],
+            difficulty: 'adept',
+            branch: 'strategy',
+            identity: 'Strategist',
+            tradeoff: 'Plans vs tactics',
+            proofPrompt: 'Annotate pawn structure.',
+          },
+        ],
+      }),
+    );
+
+    expect(tree.generationSource).toBe('gemini');
+    expect(tree.nodes.map((node) => node.title)).toEqual([
+      'I want to learn chess',
+      'Calculation-Based Player',
+      'Strategy-Based Player',
+    ]);
+    expect(tree.edges.filter((edge) => edge.source === tree.nodes[0].id)).toHaveLength(2);
+    expect(tree.nodes.slice(1).every((node) => node.prerequisites.length === 1)).toBe(true);
+  });
+
   it('expands a selected node with concrete child and grandchild nodes', () => {
     const tree = generateSkillTree({
       title: 'I want to improve at photography',
