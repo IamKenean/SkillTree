@@ -6,6 +6,7 @@ import type {
   SkillEdge,
   SkillNode,
   SkillTree,
+  TreePalette,
 } from './types.js';
 
 const difficultyXp: Record<Difficulty, number> = {
@@ -28,6 +29,7 @@ type BlueprintNode = {
   tradeoff?: string;
   difficulty?: Difficulty;
   proofPrompt?: string;
+  tips?: string[];
   hidden?: boolean;
   unlockCondition?: string;
 };
@@ -1601,6 +1603,7 @@ function buildNodeFromBlueprint(
       type: difficulty === 'expert' || difficulty === 'legendary' ? 'metric' : 'journal',
       prompt: blueprint.proofPrompt ?? 'Upload proof or write what you practiced and what improved.',
     },
+    tips: blueprint.tips ?? createDefaultTips(blueprint.title, blueprint.identity),
     branch: blueprint.branch,
     identity: blueprint.identity,
     tradeoff: blueprint.tradeoff,
@@ -1663,6 +1666,7 @@ export function generateSkillTree(input: GoalInput, now = new Date().toISOString
   return {
     id: `${rootId}-${Date.now().toString(36)}`,
     generationSource: 'blueprint',
+    palette: getPaletteForGoal(input.title, domain),
     rootGoal: input.title,
     experienceLevel: input.experienceLevel,
     weeklyHours: input.weeklyHours,
@@ -1712,6 +1716,104 @@ function layoutBlueprint(blueprint: DomainBlueprint): Map<string, { x: number; y
     });
   });
   return positions;
+}
+
+export function getPaletteForGoal(goal: string, domain = inferDomain(goal, [])): TreePalette {
+  const text = normalize(`${goal} ${domain}`);
+  if (/(love|crush|dating|romance|relationship|social|confidence|friend)/.test(text)) {
+    return {
+      name: 'Cherry Blossom',
+      primary: '#fb7185',
+      secondary: '#f9a8d4',
+      accent: '#fecdd3',
+      background: '#24111d',
+      surface: '#3b1729',
+      text: '#fff1f5',
+    };
+  }
+  if (/(garden|plant|nature|outdoor|earth)/.test(text)) {
+    return {
+      name: 'Garden Grove',
+      primary: '#65a30d',
+      secondary: '#84cc16',
+      accent: '#bef264',
+      background: '#101a0b',
+      surface: '#1f2f14',
+      text: '#f7fee7',
+    };
+  }
+  if (domain === 'photography' || /(photo|camera|portrait|cinematic)/.test(text)) {
+    return {
+      name: 'Golden Hour',
+      primary: '#f59e0b',
+      secondary: '#fb7185',
+      accent: '#fde68a',
+      background: '#1f1308',
+      surface: '#34200f',
+      text: '#fff7ed',
+    };
+  }
+  if (domain === 'chess' || /chess/.test(text)) {
+    return {
+      name: 'Ivory Board',
+      primary: '#e7d8b1',
+      secondary: '#8b5e34',
+      accent: '#facc15',
+      background: '#16110b',
+      surface: '#2a1f14',
+      text: '#fff8e7',
+    };
+  }
+  if (domain === 'boxing' || /boxing|fight|spar/.test(text)) {
+    return {
+      name: 'Red Corner',
+      primary: '#ef4444',
+      secondary: '#f97316',
+      accent: '#fecaca',
+      background: '#1f0b0b',
+      surface: '#351313',
+      text: '#fff1f2',
+    };
+  }
+  if (domain === 'calisthenics' || domain === 'strength' || /workout|gym|strong/.test(text)) {
+    return {
+      name: 'Iron Pulse',
+      primary: '#22d3ee',
+      secondary: '#818cf8',
+      accent: '#a7f3d0',
+      background: '#07131f',
+      surface: '#102235',
+      text: '#ecfeff',
+    };
+  }
+  if (domain === 'coding' || domain === 'machine' || /coding|programming|ai|machine/.test(text)) {
+    return {
+      name: 'Neon Terminal',
+      primary: '#22c55e',
+      secondary: '#38bdf8',
+      accent: '#bbf7d0',
+      background: '#04140c',
+      surface: '#0b2517',
+      text: '#ecfdf5',
+    };
+  }
+  return {
+    name: 'Astral Blue',
+    primary: '#6ee7ff',
+    secondary: '#a78bfa',
+    accent: '#a7f3d0',
+    background: '#060a12',
+    surface: '#0f172a',
+    text: '#ecf4ff',
+  };
+}
+
+function createDefaultTips(title: string, identity?: string): string[] {
+  return [
+    `Keep the next attempt small enough to do this week.`,
+    `After practicing ${title}, write one thing that felt easier and one thing that still feels unclear.`,
+    identity ? `Act like a ${identity}: choose proof that shows the identity in action.` : 'Capture proof that shows action, not just intention.',
+  ];
 }
 
 export function completeNode(

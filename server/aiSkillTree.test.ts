@@ -12,6 +12,15 @@ describe('Gemini skill tree conversion', () => {
         interests: 'tactics, openings, positional chess',
       },
       JSON.stringify({
+        palette: {
+          name: 'Ivory Board',
+          primary: '#E7D8B1',
+          secondary: '#8B5E34',
+          accent: '#FACC15',
+          background: '#16110B',
+          surface: '#2A1F14',
+          text: '#FFF8E7',
+        },
         root: {
           id: 'chess_start',
           title: 'Start Chess',
@@ -34,6 +43,7 @@ describe('Gemini skill tree conversion', () => {
             identity: 'Calculator',
             tradeoff: 'Sharp tactics vs long-term planning',
             proofPrompt: 'Solve 10 tactics and note which motif repeats.',
+            tips: ['Start untimed.', 'Name the motif.', 'Review missed tactics.'],
           },
           {
             id: 'strategy_style',
@@ -45,17 +55,20 @@ describe('Gemini skill tree conversion', () => {
             identity: 'Strategic Builder',
             tradeoff: 'Long-term pressure vs immediate tactics',
             proofPrompt: 'Review one game and identify the main plan.',
+            tips: ['Find the worst piece.', 'Name one plan.', 'Compare the endgame.'],
           },
         ],
       }),
     );
 
     expect(tree.generationSource).toBe('gemini');
+    expect(tree.palette?.name).toBe('Ivory Board');
     expect(tree.nodes).toHaveLength(3);
     expect(tree.edges.filter((edge) => edge.source === tree.nodes[0].id)).toHaveLength(2);
     expect(tree.nodes.find((node) => node.title === 'Calculation-Based Player')?.tradeoff).toBe(
       'Sharp tactics vs long-term planning',
     );
+    expect(tree.nodes.find((node) => node.title === 'Calculation-Based Player')?.tips).toContain('Start untimed.');
     expect(tree.nodes.slice(1).every((node) => node.prerequisites.length === 1)).toBe(true);
   });
 

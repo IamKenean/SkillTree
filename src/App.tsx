@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Trophy,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { api, loadSession, saveSession, type Session } from './api.js';
 import { SkillTreeCanvas } from './components/SkillTreeCanvas.js';
 import type { DashboardPayload, GoalInput, SkillNode, SkillTree } from './shared/types.js';
@@ -107,7 +107,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" style={activeGoal?.palette ? getTreePaletteStyle(activeGoal) : undefined}>
       <header className="hero">
         <div>
           <p className="eyebrow">Ascend adaptive skill tree</p>
@@ -181,13 +181,6 @@ function App() {
                 runAction(async () => {
                   const tree = await api.completeNode(session.token, activeGoal.id, body);
                   applyTree(tree);
-                })
-              }
-              onAdapt={(signals) =>
-                runAction(async () => {
-                  const tree = await api.adaptGoal(session.token, activeGoal.id, signals);
-                  const evolutionNode = tree.nodes.find((candidate) => candidate.branch.includes('evolution'));
-                  applyTree(tree, evolutionNode?.id);
                 })
               }
               onGrowBranch={(nodeId, signals) =>
@@ -386,6 +379,7 @@ function DashboardStats({ tree }: { tree: SkillTree }) {
       <Metric icon={<Trophy />} label="XP" value={`${tree.totalXp}/${nextLevelXp}`} />
       <Metric icon={<Flame />} label="Streak" value={tree.streak} />
       <Metric icon={<ShieldCheck />} label="Unlocked" value={unlocked} />
+      <Metric icon={<BrainCircuit />} label="Palette" value={tree.palette?.name ?? 'Ascend'} />
       <div className="progress-card">
         <span>Next level</span>
         <div className="progress-track">
@@ -426,7 +420,6 @@ function NodeDetail({
   tree,
   node,
   onComplete,
-  onAdapt,
   onGrowBranch,
   disabled,
 }: {
@@ -434,7 +427,6 @@ function NodeDetail({
   node: SkillNode;
   disabled: boolean;
   onComplete: (body: { nodeId: string; note: string; focusTags: string[]; proofUrl?: string }) => void;
-  onAdapt: (signals: string[]) => void;
   onGrowBranch: (nodeId: string, signals: string[]) => void;
 }) {
   const [note, setNote] = useState('Finished a focused practice rep and logged what improved.');
@@ -518,6 +510,16 @@ function NodeDetail({
           <p>{node.proof.prompt}</p>
         </div>
       )}
+      {node.tips && node.tips.length > 0 && (
+        <div className="proof-box tips-box">
+          <strong>Tips</strong>
+          <ul>
+            {node.tips.map((tip) => (
+              <li key={tip}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="adapt-box">
         <strong>Grow this branch</strong>
@@ -572,24 +574,6 @@ function NodeDetail({
         </form>
       )}
 
-      <div className="adapt-box">
-        <strong>Adaptive evolution</strong>
-        <p className="muted">Add repeated signals and Ascend creates a new specialization branch.</p>
-        <input
-          value={signals}
-          placeholder="Optional: repeated patterns, interests, or proof signals"
-          onChange={(event) => setSignals(event.target.value)}
-        />
-        <button
-          className="secondary-button"
-          disabled={disabled}
-          type="button"
-          onClick={() => onAdapt(signals.split(',').map((signal) => signal.trim()))}
-        >
-          Evolve tree
-        </button>
-      </div>
-
       {tree.achievements.length > 0 && (
         <div className="achievement-list">
           <strong>Achievements</strong>
@@ -600,6 +584,19 @@ function NodeDetail({
       )}
     </div>
   );
+}
+
+function getTreePaletteStyle(tree: SkillTree): CSSProperties {
+  const palette = tree.palette;
+  if (!palette) return {};
+  return {
+    '--tree-primary': palette.primary,
+    '--tree-secondary': palette.secondary,
+    '--tree-accent': palette.accent,
+    '--tree-background': palette.background,
+    '--tree-surface': palette.surface,
+    '--tree-text': palette.text,
+  } as CSSProperties;
 }
 
 export default App;

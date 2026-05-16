@@ -75,6 +75,10 @@ textarea:focus {
   padding: 28px 0;
 }
 
+.app-shell {
+  color: var(--tree-text, #ecf4ff);
+}
+
 .auth-screen {
   min-height: 100vh;
   display: grid;
@@ -101,7 +105,7 @@ textarea:focus {
 }
 
 .eyebrow {
-  color: #6ee7ff;
+  color: var(--tree-primary, #6ee7ff);
   margin: 0 0 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -119,11 +123,11 @@ textarea:focus {
 .feature-row span,
 .status-pill,
 .achievement-list span {
-  border: 1px solid rgba(110, 231, 255, 0.24);
+  border: 1px solid color-mix(in srgb, var(--tree-primary, #6ee7ff) 32%, transparent);
   border-radius: 999px;
   padding: 0.45rem 0.75rem;
-  color: #cdf7ff;
-  background: rgba(110, 231, 255, 0.08);
+  color: var(--tree-accent, #cdf7ff);
+  background: color-mix(in srgb, var(--tree-primary, #6ee7ff) 10%, transparent);
 }
 
 .auth-card,
@@ -132,9 +136,13 @@ textarea:focus {
 .metric-card,
 .progress-card,
 .empty-state {
-  border: 1px solid rgba(146, 174, 255, 0.16);
+  border: 1px solid color-mix(in srgb, var(--tree-primary, #92aeff) 20%, transparent);
   border-radius: 28px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(9, 14, 28, 0.82));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tree-surface, #0f172a) 88%, transparent),
+    color-mix(in srgb, var(--tree-background, #090e1c) 86%, transparent)
+  );
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(18px);
 }
@@ -184,13 +192,13 @@ textarea:focus {
   padding: 0 1rem;
   color: #03111d;
   font-weight: 800;
-  background: linear-gradient(135deg, #6ee7ff, #a7f3d0);
-  box-shadow: 0 16px 36px rgba(45, 212, 191, 0.18);
+  background: linear-gradient(135deg, var(--tree-primary, #6ee7ff), var(--tree-accent, #a7f3d0));
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--tree-primary, #2dd4bf) 24%, transparent);
 }
 
 .secondary-button {
   color: #f8fbff;
-  background: linear-gradient(135deg, rgba(91, 141, 255, 0.9), rgba(139, 92, 246, 0.9));
+  background: linear-gradient(135deg, var(--tree-secondary, #5b8dff), var(--tree-primary, #8b5cf6));
 }
 
 .ghost-button {
@@ -222,7 +230,7 @@ textarea:focus {
   place-items: center;
   border-radius: 20px;
   color: #06121f;
-  background: linear-gradient(135deg, #6ee7ff, #c4b5fd);
+  background: linear-gradient(135deg, var(--tree-primary, #6ee7ff), var(--tree-secondary, #c4b5fd));
   font-weight: 900;
 }
 
@@ -264,8 +272,8 @@ textarea:focus {
 }
 
 .goal-row.active {
-  border-color: rgba(110, 231, 255, 0.42);
-  box-shadow: inset 0 0 24px rgba(110, 231, 255, 0.08);
+  border-color: color-mix(in srgb, var(--tree-primary, #6ee7ff) 50%, transparent);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--tree-primary, #6ee7ff) 12%, transparent);
 }
 
 .goal-row span,
@@ -294,7 +302,7 @@ textarea:focus {
 }
 
 .metric-card svg {
-  color: #6ee7ff;
+  color: var(--tree-primary, #6ee7ff);
 }
 
 .metric-card span,
@@ -317,17 +325,20 @@ textarea:focus {
 .progress-track div {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6ee7ff, #a7f3d0);
+  background: linear-gradient(90deg, var(--tree-primary, #6ee7ff), var(--tree-accent, #a7f3d0));
 }
 
 .tree-shell {
   overflow: hidden;
   height: 680px;
-  border: 1px solid rgba(146, 174, 255, 0.16);
+  border: 1px solid color-mix(in srgb, var(--tree-primary, #92aeff) 22%, transparent);
   border-radius: 30px;
   background:
-    linear-gradient(rgba(13, 20, 35, 0.84), rgba(9, 14, 28, 0.9)),
-    radial-gradient(circle at 50% 50%, rgba(110, 231, 255, 0.12), transparent 35%);
+    linear-gradient(
+      color-mix(in srgb, var(--tree-surface, #0d1423) 86%, transparent),
+      color-mix(in srgb, var(--tree-background, #090e1c) 92%, transparent)
+    ),
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--tree-primary, #6ee7ff) 16%, transparent), transparent 35%);
 }
 
 .skill-node {
@@ -336,10 +347,10 @@ textarea:focus {
   gap: 0.35rem;
   width: 190px;
   min-height: 148px;
-  border: 1px solid rgba(132, 204, 255, 0.3);
+  border: 1px solid color-mix(in srgb, var(--tree-primary, #84ccff) 42%, transparent);
   border-radius: 24px;
   color: #eef6ff;
-  background: linear-gradient(180deg, rgba(19, 30, 53, 0.96), rgba(12, 18, 34, 0.96));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tree-surface, #131e35) 92%, #111827), color-mix(in srgb, var(--tree-background, #0c1222) 94%, #020617));
   padding: 0.85rem;
   text-align: left;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
@@ -347,8 +358,8 @@ textarea:focus {
 
 .skill-node.selected,
 .react-flow__node.selected .skill-node {
-  border-color: #6ee7ff;
-  box-shadow: 0 0 0 3px rgba(110, 231, 255, 0.18), 0 20px 50px rgba(0, 0, 0, 0.32);
+  border-color: var(--tree-primary, #6ee7ff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tree-primary, #6ee7ff) 22%, transparent), 0 20px 50px rgba(0, 0, 0, 0.32);
 }
 
 .skill-node.complete {
@@ -381,7 +392,7 @@ textarea:focus {
   place-items: center;
   border-radius: 14px;
   color: #06121f;
-  background: linear-gradient(135deg, #6ee7ff, #c4b5fd);
+  background: linear-gradient(135deg, var(--tree-primary, #6ee7ff), var(--tree-secondary, #c4b5fd));
 }
 
 .skill-node h3 {
@@ -395,7 +406,7 @@ textarea:focus {
 }
 
 .skill-edge {
-  stroke: #6ee7ff;
+  stroke: var(--tree-primary, #6ee7ff);
 }
 
 .react-flow__controls {
@@ -435,10 +446,10 @@ textarea:focus {
 .identity-grid div,
 .proof-box,
 .adapt-box {
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid color-mix(in srgb, var(--tree-primary, #94a3b8) 18%, transparent);
   border-radius: 18px;
   padding: 0.75rem;
-  background: rgba(15, 23, 42, 0.45);
+  background: color-mix(in srgb, var(--tree-surface, #0f172a) 56%, transparent);
 }
 
 .identity-grid {
@@ -461,6 +472,16 @@ textarea:focus {
 .proof-box p {
   margin: 0.35rem 0 0;
   color: #a8bdd5;
+}
+
+.tips-box ul {
+  margin: 0.55rem 0 0;
+  padding-left: 1.1rem;
+  color: #c8d7eb;
+}
+
+.tips-box li + li {
+  margin-top: 0.35rem;
 }
 
 .hidden-rule {

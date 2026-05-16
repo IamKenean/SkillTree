@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
-import { generateSkillTree, parseInterests } from '../src/shared/skillTree.js';
+import { generateSkillTree, getPaletteForGoal, parseInterests } from '../src/shared/skillTree.js';
 import type { Difficulty, GoalInput, SkillEdge, SkillNode, SkillTree } from '../src/shared/types.js';
 
 const difficultyXp: Record<Difficulty, number> = {
@@ -23,11 +23,23 @@ const aiNodeSchema = z.object({
   xp: z.number().int().min(25).max(600).optional(),
   estimatedHours: z.number().int().min(1).max(40).optional(),
   proofPrompt: z.string().min(8).max(180),
+  tips: z.array(z.string().min(4).max(140)).max(4).default([]),
   hidden: z.boolean().default(false),
   unlockCondition: z.string().min(8).max(180).optional(),
 });
 
+const paletteSchema = z.object({
+  name: z.string().min(3).max(40),
+  primary: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  background: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  surface: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  text: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
 const aiGraphSchema = z.object({
+  palette: paletteSchema.optional(),
   root: aiNodeSchema.extend({
     difficulty: z.literal('starter').default('starter'),
     children: z.array(z.string().min(2).max(48)).min(2).max(8),
@@ -116,6 +128,7 @@ export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now
         type: difficulty === 'expert' || difficulty === 'legendary' ? 'metric' : 'journal',
         prompt: node.proofPrompt,
       },
+      tips: node.tips.length ? node.tips : createAiTips(node.title, node.identity),
       branch: node.branch,
       identity: node.identity,
       tradeoff: node.tradeoff,
@@ -144,6 +157,7 @@ export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now
   return {
     id: `${rootSlug}-${Date.now().toString(36)}`,
     generationSource: 'gemini',
+    palette: graph.palette ?? getPaletteForGoal(input.title, parseInterests(input.interests).join(' ')),
     rootGoal: input.title,
     experienceLevel: input.experienceLevel,
     weeklyHours: input.weeklyHours,
@@ -193,12 +207,22 @@ Interests/focus areas: ${input.interests}
 
 Return only valid JSON matching:
 {
+  "palette": {"name": "...", "primary": "#RRGGBB", "secondary": "#RRGGBB", "accent": "#RRGGBB", "background": "#RRGGBB", "surface": "#RRGGBB", "text": "#RRGGBB"},
   "root": {"id": "...", "title": "...", "description": "...", "children": ["...", "..."], "difficulty": "starter", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "..."},
-  "nodes": [{"id": "...", "title": "...", "description": "...", "children": ["...", "..."], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "hidden": false, "unlockCondition": "..."}]
+  "nodes": [{"id": "...", "title": "...", "description": "...", "children": ["...", "..."], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "tips": ["...", "..."], "hidden": false, "unlockCondition": "..."}]
 }
 
 Example shape to imitate for the INITIAL chart:
 {
+  "palette": {
+    "name": "Ivory Board",
+    "primary": "#E7D8B1",
+    "secondary": "#8B5E34",
+    "accent": "#FACC15",
+    "background": "#16110B",
+    "surface": "#2A1F14",
+    "text": "#FFF8E7"
+  },
   "root": {
     "id": "chess_start",
     "title": "Start Chess",
@@ -211,8 +235,8 @@ Example shape to imitate for the INITIAL chart:
     "proofPrompt": "Play one game and write which style felt more natural."
   },
   "nodes": [
-    {"id": "calculation_style", "title": "Calculation-Based Player", "description": "Develop through tactics, forcing lines, and concrete move-by-move reading.", "children": [], "difficulty": "apprentice", "branch": "calculation", "identity": "Calculator", "tradeoff": "Sharp tactics vs long-term planning", "proofPrompt": "Solve 10 tactics and note which motif repeats."},
-    {"id": "strategy_style", "title": "Strategy-Based Player", "description": "Develop through plans, positional choices, endgames, and long-term pressure.", "children": [], "difficulty": "apprentice", "branch": "strategy", "identity": "Strategist", "tradeoff": "Long-term pressure vs immediate tactics", "proofPrompt": "Review one game and identify the main plan."}
+    {"id": "calculation_style", "title": "Calculation-Based Player", "description": "Develop through tactics, forcing lines, and concrete move-by-move reading.", "children": [], "difficulty": "apprentice", "branch": "calculation", "identity": "Calculator", "tradeoff": "Sharp tactics vs long-term planning", "proofPrompt": "Solve 10 tactics and note which motif repeats.", "tips": ["Start with untimed puzzles before adding speed.", "Name the tactic motif out loud.", "Review misses immediately."]},
+    {"id": "strategy_style", "title": "Strategy-Based Player", "description": "Develop through plans, positional choices, endgames, and long-term pressure.", "children": [], "difficulty": "apprentice", "branch": "strategy", "identity": "Strategist", "tradeoff": "Long-term pressure vs immediate tactics", "proofPrompt": "Review one game and identify the main plan.", "tips": ["Pause before each move and ask what improved.", "Track pawn structure changes.", "Prefer one clear plan over many vague ideas."]}
   ]
 }
 
@@ -225,6 +249,8 @@ Rules:
 - Every child id listed anywhere must have a matching object in "nodes"; never reference phantom children.
 - Each root branch must represent a different style, identity, or specialization path.
 - Include tradeoffs such as speed vs accuracy, tactical vs positional, creative vs technical, strength vs endurance.
+- Generate a named color palette specific to the goal. Love/social goals can use cherry blossom tones; gardening can use greens; fighting can use red corner tones; photography can use golden-hour tones.
+- Include 2 to 4 practical tips per node that help the user complete the proof prompt.
 - Avoid checklist steps. Prefer identity choices like "Calculation-Based Player" vs "Strategy-Based Player".
 - Use concise titles and concrete proof prompts.`;
 }
@@ -260,7 +286,7 @@ ${JSON.stringify(existingNodes, null, 2)}
 Return only valid JSON matching:
 {
   "nodes": [
-    {"id": "new_child_id", "title": "...", "description": "...", "children": ["new_grandchild_a", "new_grandchild_b"], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "hidden": false, "unlockCondition": "..."}
+    {"id": "new_child_id", "title": "...", "description": "...", "children": ["new_grandchild_a", "new_grandchild_b"], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "tips": ["...", "..."], "hidden": false, "unlockCondition": "..."}
   ]
 }
 
@@ -275,6 +301,7 @@ Rules:
 - Never use generic/meta titles such as "Feedback Loop", "Pressure Test", "Advanced X", "X Mastery Branch", or titles that simply repeat the selected node with a suffix.
 - Do not include the selected node title inside new node titles unless it is truly a natural named skill.
 - Include at least one tradeoff and one hidden future node with unlockCondition.
+- Include 2 to 4 practical tips per node.
 - Do not duplicate existing node titles or ids.`;
 }
 
@@ -322,6 +349,7 @@ export function expandSkillTreeFromAiBranch(
         type: difficulty === 'expert' || difficulty === 'legendary' ? 'metric' : 'journal',
         prompt: node.proofPrompt,
       },
+      tips: node.tips.length ? node.tips : createAiTips(node.title, node.identity),
       branch: node.branch,
       identity: node.identity,
       tradeoff: node.tradeoff,
@@ -463,6 +491,14 @@ function assertBranchExpansionQuality(nodes: Array<z.output<typeof aiNodeSchema>
   if (badTitle) {
     throw new Error(`AI branch expansion used a generic or recursive title: ${badTitle.title}`);
   }
+}
+
+function createAiTips(title: string, identity?: string): string[] {
+  return [
+    `Make the next ${title} attempt small and observable.`,
+    `Save proof right after the attempt while details are fresh.`,
+    identity ? `Ask what a ${identity} would do one step better next time.` : 'Pick one next adjustment instead of rewriting the whole plan.',
+  ];
 }
 
 function assertNoPhantomChildren(nodes: Array<{ id: string; children: string[] }>): void {
