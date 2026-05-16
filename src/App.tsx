@@ -420,6 +420,14 @@ function NodeDetail({
     () => node.prerequisites.map((id) => tree.nodes.find((candidate) => candidate.id === id)?.title ?? id),
     [node.prerequisites, tree.nodes],
   );
+  const hiddenBranches = useMemo(
+    () =>
+      tree.nodes
+        .filter((candidate) => candidate.hidden && candidate.unlockCondition)
+        .filter((candidate) => candidate.branch === node.branch || candidate.prerequisites.includes(node.id))
+        .slice(0, 3),
+    [node.branch, node.id, tree.nodes],
+  );
 
   return (
     <div className="panel stack node-detail">
@@ -466,6 +474,16 @@ function NodeDetail({
         <div className="proof-box hidden-rule">
           <strong>Hidden unlock logic</strong>
           <p>{node.unlockCondition}</p>
+        </div>
+      )}
+      {hiddenBranches.length > 0 && (
+        <div className="proof-box hidden-rule">
+          <strong>Hidden future branches</strong>
+          {hiddenBranches.map((branch) => (
+            <p key={branch.id}>
+              {branch.title}: {branch.unlockCondition}
+            </p>
+          ))}
         </div>
       )}
       {node.proof && (
