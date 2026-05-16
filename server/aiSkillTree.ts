@@ -267,6 +267,7 @@ Return only valid JSON matching:
 Rules:
 - Add 3 to 8 NEW nodes under the selected node.
 - The selected node is the parent of the first layer of returned nodes.
+- Do NOT return a new root, start, overview, or journey wrapper node. Return only actual skills that branch from the selected node.
 - Every child id in returned nodes must have a matching object in returned "nodes"; no phantom children.
 - Make the expansion deeper than one level: at least one returned child must itself have 2 children.
 - Continue the selected branch identity, but introduce a more specific specialization.
@@ -283,8 +284,10 @@ export function expandSkillTreeFromAiBranch(
   const selected = findNode(tree, nodeId);
   const expansion = aiBranchExpansionSchema.parse(JSON.parse(stripJson(rawJson)));
   assertNoPhantomChildren(expansion.nodes);
+  const normalizedExpansionNodes = removeExpansionWrapperNodes(expansion.nodes, selected);
+  assertNoPhantomChildren(normalizedExpansionNodes);
   const existingTitles = new Set(tree.nodes.map((node) => node.title.toLowerCase()));
-  const newBlueprints = expansion.nodes.filter((node) => !existingTitles.has(node.title.toLowerCase()));
+  const newBlueprints = normalizedExpansionNodes.filter((node) => !existingTitles.has(node.title.toLowerCase()));
   if (newBlueprints.length < 2) {
     throw new Error('AI branch expansion did not include enough new nodes.');
   }
@@ -346,6 +349,43 @@ export function expandSkillTreeFromAiBranch(
     edges: [...tree.edges, ...newEdges],
     updatedAt: now,
   };
+}
+
+function removeExpansionWrapperNodes(
+  nodes: Array<z.output<typeof aiNodeSchema>>,
+  selected: SkillNode,
+): Array<z.output<typeof aiNodeSchema>> {
+  const parentCounts = new Map<string, number>();
+  nodes.forEach((node) => {
+    node.children.forEach((child) => parentCounts.set(child, (parentCounts.get(child) ?? 0) + 1));
+  });
+  const wrapperIds = new Set(
+    nodes
+      .filter((node) => node.children.length > 0 && !parentCounts.has(node.id))
+      .filter((node) => isExpansionWrapperNode(node, selected))
+      .map((node) => node.id),
+  );
+
+  if (wrapperIds.size === 0) return nodes;
+
+  return nodes
+    .filter((node) => !wrapperIds.has(node.id))
+    .map((node) => ({
+      ...node,
+      children: node.children.filter((child) => !wrapperIds.has(child)),
+    }));
+}
+
+function isExpansionWrapperNode(node: z.output<typeof aiNodeSchema>, selected: SkillNode): boolean {
+  const title = node.title.toLowerCase();
+  const id = node.id.toLowerCase();
+  const selectedTitle = selected.title.toLowerCase();
+  return (
+    title === selectedTitle ||
+    title.includes(selectedTitle) ||
+    /\b(start|begin|root|overview|journey|branch hub|path hub)\b/.test(title) ||
+    /\b(start|begin|root|overview|journey|hub)\b/.test(id)
+  );
 }
 
 function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: string[], now = new Date().toISOString()): SkillTree {

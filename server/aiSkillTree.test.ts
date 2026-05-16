@@ -229,4 +229,72 @@ describe('Gemini skill tree conversion', () => {
     expect(expanded.nodes.find((node) => node.title === 'Documentary Access Branch')?.hidden).toBe(true);
     expect(expanded.edges.some((edge) => edge.target.includes('hidden-documentary-access'))).toBe(true);
   });
+
+  it('removes AI wrapper roots and branches children directly from the selected node', () => {
+    const tree = generateSkillTree({
+      title: 'I want to improve at photography',
+      experienceLevel: 'Beginner',
+      weeklyHours: 4,
+      interests: 'street photography, portraits',
+    });
+    const selected = tree.nodes.find((node) => node.title === 'Street Photography Path') ?? tree.nodes[0];
+    const expanded = expandSkillTreeFromAiBranch(
+      tree,
+      selected.id,
+      JSON.stringify({
+        nodes: [
+          {
+            id: 'street_growth_root',
+            title: 'Start Street Photography Branch',
+            description: 'Wrapper node that should not appear in the actual graph.',
+            children: ['candid_timing', 'urban_layering'],
+            difficulty: 'apprentice',
+            branch: 'street-growth',
+            identity: 'Street Explorer',
+            tradeoff: 'Wrapper vs real branch',
+            proofPrompt: 'This should not be shown.',
+          },
+          {
+            id: 'candid_timing',
+            title: 'Candid Timing',
+            description: 'Practice anticipating gestures and decisive moments.',
+            children: ['gesture_sequence'],
+            difficulty: 'adept',
+            branch: 'street-growth',
+            identity: 'Moment Hunter',
+            tradeoff: 'Patience vs volume',
+            proofPrompt: 'Capture three timed candid frames.',
+          },
+          {
+            id: 'urban_layering',
+            title: 'Urban Layering',
+            description: 'Compose foreground, subject, and background relationships.',
+            children: [],
+            difficulty: 'adept',
+            branch: 'street-growth',
+            identity: 'Layered Composer',
+            tradeoff: 'Complexity vs clarity',
+            proofPrompt: 'Create three layered street frames.',
+          },
+          {
+            id: 'gesture_sequence',
+            title: 'Gesture Sequence',
+            description: 'Build a short sequence around repeated human gestures.',
+            children: [],
+            difficulty: 'expert',
+            branch: 'street-growth',
+            identity: 'Street Storyteller',
+            tradeoff: 'Narrative vs single-image impact',
+            proofPrompt: 'Create a five-image gesture sequence.',
+          },
+        ],
+      }),
+    );
+
+    expect(expanded.nodes.some((node) => node.title === 'Start Street Photography Branch')).toBe(false);
+    const candidTiming = expanded.nodes.find((node) => node.title === 'Candid Timing');
+    const urbanLayering = expanded.nodes.find((node) => node.title === 'Urban Layering');
+    expect(expanded.edges.some((edge) => edge.source === selected.id && edge.target === candidTiming?.id)).toBe(true);
+    expect(expanded.edges.some((edge) => edge.source === selected.id && edge.target === urbanLayering?.id)).toBe(true);
+  });
 });
