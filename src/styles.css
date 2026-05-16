@@ -428,12 +428,19 @@ textarea:focus {
 }
 
 .node-meta div,
+.identity-grid div,
 .proof-box,
 .adapt-box {
   border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 18px;
   padding: 0.75rem;
   background: rgba(15, 23, 42, 0.45);
+}
+
+.identity-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
 }
 
 .node-meta dt {
@@ -444,6 +451,17 @@ textarea:focus {
 .node-meta dd {
   margin: 0.2rem 0 0;
   font-weight: 800;
+}
+
+.identity-grid p,
+.proof-box p {
+  margin: 0.35rem 0 0;
+  color: #a8bdd5;
+}
+
+.hidden-rule {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(120, 53, 15, 0.16);
 }
 
 .status-pill {

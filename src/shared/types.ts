@@ -17,6 +17,9 @@ export type SkillNode = {
   prerequisites: string[];
   proof?: ProofRequirement;
   branch: string;
+  identity?: string;
+  tradeoff?: string;
+  unlockCondition?: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   hidden?: boolean;
   status: SkillNodeStatus;

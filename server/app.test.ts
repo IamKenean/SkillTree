@@ -60,6 +60,9 @@ describe('Ascend API', () => {
       .send({ signals: ['pushups', 'dips', 'pullups', 'handstands'] })
       .expect(200);
 
-    expect(adapted.body.nodes.map((node: { title: string }) => node.title)).toContain('Muscle up pathway');
+    expect(adapted.body.nodes.map((node: { title: string }) => node.title)).toContain('Muscle Up Pathway');
+    expect(
+      adapted.body.nodes.find((node: { title: string }) => node.title === 'Muscle Up Pathway').hidden,
+    ).toBe(false);
   });
 });

@@ -43,7 +43,8 @@ describe('skill tree engine', () => {
     const adapted = adaptSkillTree(tree, ['pushups', 'dips', 'pullups', 'handstand']);
 
     expect(adapted.interests).toContain('calisthenics');
-    expect(adapted.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['Muscle up pathway', 'Front lever basics']));
+    expect(adapted.nodes.map((node) => node.title)).toEqual(expect.arrayContaining(['Muscle Up Pathway', 'Front Lever Basics']));
+    expect(adapted.nodes.find((node) => node.title === 'Muscle Up Pathway')?.hidden).toBe(false);
   });
 
   it('unlocks the first adaptive node when it grows from completed progress', () => {
@@ -56,6 +57,54 @@ describe('skill tree engine', () => {
     const completed = completeNode(tree, tree.nodes[0].id, 'Finished the baseline quest.', ['pullups']);
     const adapted = adaptSkillTree(completed, ['pushups', 'dips', 'pullups', 'handstand']);
 
-    expect(adapted.nodes.find((node) => node.title === 'Muscle up pathway')?.status).toBe('unlocked');
+    expect(adapted.nodes.find((node) => node.title === 'Muscle Up Pathway')?.status).toBe('unlocked');
+  });
+
+  it('generates a non-linear chess tree with identities, tradeoffs, and hidden logic', () => {
+    const tree = generateSkillTree({
+      title: 'I want to learn chess',
+      experienceLevel: 'Beginner',
+      weeklyHours: 3,
+      interests: 'tactics, openings, rating climb',
+    });
+    const rootChildren = tree.edges.filter((edge) => edge.source === tree.nodes[0].id);
+    const tactical = tree.nodes.find((node) => node.title === 'Tactical Specialist Path');
+    const positional = tree.nodes.find((node) => node.title === 'Positional Understanding');
+
+    expect(rootChildren).toHaveLength(2);
+    expect(tactical?.identity).toBe('Tactical Specialist');
+    expect(positional?.tradeoff).toContain('Long-term pressure');
+    expect(tree.nodes.some((node) => node.unlockCondition?.includes('repeated'))).toBe(true);
+  });
+
+  it('generates boxing as a career-style graph toward first fight', () => {
+    const tree = generateSkillTree({
+      title: 'I want to learn boxing and maybe fight',
+      experienceLevel: 'New',
+      weeklyHours: 6,
+      interests: 'jab, defense, sparring',
+    });
+
+    expect(tree.nodes.map((node) => node.title)).toEqual(
+      expect.arrayContaining(['Outboxing Style', 'Counterfighter Path', 'First Amateur Fight']),
+    );
+    expect(tree.edges.filter((edge) => edge.source === tree.nodes[0].id)).toHaveLength(2);
+    expect(tree.nodes.find((node) => node.title === 'First Amateur Fight')?.hidden).toBe(true);
+  });
+
+  it('generates photography genre divergence across street, portrait, cinematic, and commercial paths', () => {
+    const tree = generateSkillTree({
+      title: 'I want to improve at photography',
+      experienceLevel: 'Beginner',
+      weeklyHours: 4,
+      interests: 'street photography, portraits, cinematic color',
+    });
+
+    expect(tree.nodes.map((node) => node.title)).toEqual(
+      expect.arrayContaining(['Street Photography Path', 'Portrait Photography Path', 'Cinematic Photo Style']),
+    );
+    expect(tree.nodes.find((node) => node.title === 'Commercial / Paid Work Ready')?.unlockCondition).toContain(
+      'portrait',
+    );
   });
 });

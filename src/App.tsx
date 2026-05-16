@@ -444,10 +444,30 @@ function NodeDetail({
           <dd>{node.estimatedHours}h</dd>
         </div>
       </dl>
+      <div className="identity-grid">
+        {node.identity && (
+          <div>
+            <strong>Identity path</strong>
+            <p>{node.identity}</p>
+          </div>
+        )}
+        {node.tradeoff && (
+          <div>
+            <strong>Tradeoff</strong>
+            <p>{node.tradeoff}</p>
+          </div>
+        )}
+      </div>
       <div>
         <strong>Prerequisites</strong>
         <p className="muted">{prerequisites.length ? prerequisites.join(', ') : 'None'}</p>
       </div>
+      {node.unlockCondition && (
+        <div className="proof-box hidden-rule">
+          <strong>Hidden unlock logic</strong>
+          <p>{node.unlockCondition}</p>
+        </div>
+      )}
       {node.proof && (
         <div className="proof-box">
           <strong>Proof prompt</strong>
