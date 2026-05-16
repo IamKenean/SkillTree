@@ -52,4 +52,10 @@ export const api = {
   ) => request<SkillTree>(`/api/goals/${goalId}/complete`, { method: 'POST', body: JSON.stringify(body) }, token),
   adaptGoal: (token: string, goalId: string, signals: string[]) =>
     request<SkillTree>(`/api/goals/${goalId}/adapt`, { method: 'POST', body: JSON.stringify({ signals }) }, token),
+  expandGoal: (token: string, goalId: string, nodeId: string, signals: string[]) =>
+    request<SkillTree>(
+      `/api/goals/${goalId}/expand`,
+      { method: 'POST', body: JSON.stringify({ nodeId, signals }) },
+      token,
+    ),
 };

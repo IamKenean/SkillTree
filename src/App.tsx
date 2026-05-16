@@ -183,6 +183,14 @@ function App() {
                   applyTree(tree, evolutionNode?.id);
                 })
               }
+              onGrowBranch={(nodeId, signals) =>
+                runAction(async () => {
+                  const previousIds = new Set(activeGoal.nodes.map((candidate) => candidate.id));
+                  const tree = await api.expandGoal(session.token, activeGoal.id, nodeId, signals);
+                  const newNode = tree.nodes.find((candidate) => !previousIds.has(candidate.id));
+                  applyTree(tree, newNode?.id);
+                })
+              }
             />
           ) : (
             <div className="panel muted-panel">Select or create a goal to inspect its skill nodes.</div>
@@ -403,6 +411,7 @@ function NodeDetail({
   node,
   onComplete,
   onAdapt,
+  onGrowBranch,
   disabled,
 }: {
   tree: SkillTree;
@@ -410,6 +419,7 @@ function NodeDetail({
   disabled: boolean;
   onComplete: (body: { nodeId: string; note: string; focusTags: string[]; proofUrl?: string }) => void;
   onAdapt: (signals: string[]) => void;
+  onGrowBranch: (nodeId: string, signals: string[]) => void;
 }) {
   const [note, setNote] = useState('Finished a focused practice rep and logged what improved.');
   const [tags, setTags] = useState('pushups, dips, pullups');
@@ -492,6 +502,20 @@ function NodeDetail({
           <p>{node.proof.prompt}</p>
         </div>
       )}
+
+      <div className="adapt-box">
+        <strong>Grow this branch</strong>
+        <p className="muted">Feed this node and your signals back into AI to add deeper child nodes.</p>
+        <input value={signals} onChange={(event) => setSignals(event.target.value)} />
+        <button
+          className="secondary-button"
+          disabled={disabled}
+          type="button"
+          onClick={() => onGrowBranch(node.id, signals.split(',').map((signal) => signal.trim()))}
+        >
+          Grow selected branch
+        </button>
+      </div>
 
       {node.status === 'unlocked' && (
         <form

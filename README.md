@@ -28,6 +28,8 @@ The web app runs on `http://localhost:5173` and proxies API calls to `http://loc
 
 To enable live Gemini generation, set `GEMINI_API_KEY` before starting the API. If it is missing or Gemini returns invalid JSON, Ascend falls back to the local blueprint generator.
 
+The Gemini prompt includes a full photography JSON example and requires every `children` id to have a matching node object. Users can also grow a selected branch later with `POST /api/goals/:goalId/expand`, which sends the selected node, current tree context, and behavior signals back to AI to append deeper child and grandchild nodes.
+
 For a production build:
 
 ```bash

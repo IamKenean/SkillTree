@@ -66,5 +66,17 @@ describe('Ascend API', () => {
     expect(
       adapted.body.nodes.find((node: { title: string }) => node.title === 'Muscle Up Pathway').hidden,
     ).toBe(false);
+
+    const expanded = await request(app)
+      .post(`/api/goals/${goal.body.id}/expand`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        nodeId: rootId,
+        signals: ['pushups', 'dips'],
+      })
+      .expect(200);
+
+    expect(expanded.body.nodes.length).toBeGreaterThan(adapted.body.nodes.length);
+    expect(expanded.body.edges.some((edge: { source: string }) => edge.source === rootId)).toBe(true);
   });
 });

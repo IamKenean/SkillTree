@@ -35,7 +35,12 @@ const aiGraphSchema = z.object({
   nodes: z.array(aiNodeSchema).min(10).max(32),
 });
 
+const aiBranchExpansionSchema = z.object({
+  nodes: z.array(aiNodeSchema).min(2).max(10),
+});
+
 export type TreeGenerator = (input: GoalInput) => Promise<SkillTree>;
+export type BranchExpander = (tree: SkillTree, nodeId: string, signals: string[]) => Promise<SkillTree>;
 
 export function createSkillTreeGenerator(apiKey = process.env.GEMINI_API_KEY): TreeGenerator {
   return async (input) => {
@@ -61,9 +66,35 @@ export function createSkillTreeGenerator(apiKey = process.env.GEMINI_API_KEY): T
   };
 }
 
+export function createBranchExpander(apiKey = process.env.GEMINI_API_KEY): BranchExpander {
+  return async (tree, nodeId, signals) => {
+    if (!apiKey) {
+      return expandBranchWithFallback(tree, nodeId, signals);
+    }
+
+    try {
+      const node = findNode(tree, nodeId);
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+        contents: buildBranchExpansionPrompt(tree, node, signals),
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.9,
+        },
+      });
+      return expandSkillTreeFromAiBranch(tree, nodeId, result.text ?? '');
+    } catch (error) {
+      console.warn('Gemini branch expansion failed; using local branch fallback.', error);
+      return expandBranchWithFallback(tree, nodeId, signals);
+    }
+  };
+}
+
 export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now = new Date().toISOString()): SkillTree {
   const graph = aiGraphSchema.parse(JSON.parse(stripJson(rawJson)));
   const all = [graph.root, ...graph.nodes];
+  assertNoPhantomChildren(all);
   const rootSlug = slug(input.title) || 'personal-growth';
   const idMap = createIdMap(all.map((node) => node.id), rootSlug);
   const positions = layoutGraph(graph.root.id, all);
@@ -143,15 +174,264 @@ Return only valid JSON matching:
   "nodes": [{"id": "...", "title": "...", "description": "...", "children": ["...", "..."], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "hidden": false, "unlockCondition": "..."}]
 }
 
+Example shape to imitate for depth and child creation:
+{
+  "root": {
+    "id": "photo_start",
+    "title": "Start Photography Journey",
+    "description": "Learn camera control and composition, then choose a genre path.",
+    "children": ["camera_basics", "composition_foundation"],
+    "difficulty": "starter",
+    "branch": "origin",
+    "identity": "Visual Explorer",
+    "tradeoff": "Technical control vs creative instinct",
+    "proofPrompt": "Take 10 intentional photos and write what you controlled."
+  },
+  "nodes": [
+    {"id": "camera_basics", "title": "Understand Camera Settings (ISO, Shutter, Aperture)", "description": "Learn exposure as creative control.", "children": ["manual_control", "low_light_focus"], "difficulty": "apprentice", "branch": "technical", "identity": "Camera Technician", "tradeoff": "Control vs speed", "proofPrompt": "Shoot one subject with three exposure settings."},
+    {"id": "composition_foundation", "title": "Learn Composition (Rule of Thirds, Framing)", "description": "Control attention inside the frame.", "children": ["street_photography_path", "portrait_path"], "difficulty": "apprentice", "branch": "composition", "identity": "Composer", "tradeoff": "Structure vs intuition", "proofPrompt": "Create three framing variations."},
+    {"id": "manual_control", "title": "Shoot Fully in Manual Mode", "description": "Make exposure choices deliberately.", "children": ["technical_mastery", "creative_control"], "difficulty": "adept", "branch": "technical", "identity": "Manual Shooter", "tradeoff": "Precision vs spontaneity", "proofPrompt": "Shoot one session fully manual."},
+    {"id": "low_light_focus", "title": "Low Light Photography", "description": "Work with noise, motion blur, and mood.", "children": ["night_street", "cinematic_style"], "difficulty": "adept", "branch": "low-light", "identity": "Low-Light Shooter", "tradeoff": "Mood vs clarity", "proofPrompt": "Shoot five low-light frames."},
+    {"id": "street_photography_path", "title": "Street Photography Path", "description": "Capture timing, gesture, and public life.", "children": ["candid_mastery", "storytelling_focus"], "difficulty": "adept", "branch": "street", "identity": "Street Photographer", "tradeoff": "Candid truth vs composed control", "proofPrompt": "Shoot a street set."},
+    {"id": "portrait_path", "title": "Portrait Photography Path", "description": "Shape expression, pose, and trust.", "children": ["lighting_mastery", "model_direction"], "difficulty": "adept", "branch": "portrait", "identity": "Portrait Maker", "tradeoff": "Direction vs authenticity", "proofPrompt": "Shoot a portrait session."},
+    {"id": "candid_mastery", "title": "Capture Candid Moments", "description": "Anticipate human moments without overdirecting.", "children": ["documentary_style", "human_stories"], "difficulty": "expert", "branch": "street", "identity": "Candid Hunter", "tradeoff": "Patience vs intervention", "proofPrompt": "Capture three candid moments."},
+    {"id": "lighting_mastery", "title": "Master Lighting (Natural + Artificial)", "description": "Shape mood and attention with light.", "children": ["studio_work", "commercial_photography"], "difficulty": "expert", "branch": "portrait", "identity": "Lighting Specialist", "tradeoff": "Controlled polish vs natural feel", "proofPrompt": "Shoot natural and artificial light."},
+    {"id": "cinematic_style", "title": "Cinematic Photo Style", "description": "Use light, color, crop, and sequence.", "children": ["color_grading", "visual_storytelling"], "difficulty": "expert", "branch": "cinematic", "identity": "Cinematic Artist", "tradeoff": "Stylization vs realism", "proofPrompt": "Edit five images into one look."},
+    {"id": "commercial_photography", "title": "Commercial / Paid Work Ready", "description": "Translate taste into client-ready output.", "children": ["portfolio_building", "client_work"], "difficulty": "legendary", "branch": "commercial", "identity": "Commercial Shooter", "tradeoff": "Personal style vs client clarity", "proofPrompt": "Create a mock client brief.", "hidden": true, "unlockCondition": "Unlock after repeated portrait, lighting, or portfolio proof."},
+    {"id": "technical_mastery", "title": "Technical Mastery", "description": "Control focus, exposure, and repeatable quality.", "children": [], "difficulty": "expert", "branch": "technical", "identity": "Technical Specialist", "tradeoff": "Consistency vs experimentation", "proofPrompt": "Create a technically consistent mini-series."},
+    {"id": "creative_control", "title": "Creative Control", "description": "Use constraints to create a deliberate look.", "children": [], "difficulty": "expert", "branch": "creative", "identity": "Creative Director", "tradeoff": "Experimentation vs consistency", "proofPrompt": "Shoot one concept with a deliberate constraint."},
+    {"id": "night_street", "title": "Night Street", "description": "Use city light, reflections, blur, and contrast.", "children": [], "difficulty": "expert", "branch": "street", "identity": "Night Walker", "tradeoff": "Atmosphere vs sharpness", "proofPrompt": "Create a night street sequence."},
+    {"id": "portfolio_building", "title": "Portfolio Building", "description": "Curate a tight body of work.", "children": [], "difficulty": "expert", "branch": "career", "identity": "Portfolio Builder", "tradeoff": "Focus vs range", "proofPrompt": "Select 12 images and explain the audience."},
+    {"id": "client_work", "title": "Client Work", "description": "Manage brief, delivery, revisions, and expectations.", "children": [], "difficulty": "legendary", "branch": "career", "identity": "Working Photographer", "tradeoff": "Client needs vs artistic voice", "proofPrompt": "Complete a mock-client shoot.", "hidden": true, "unlockCondition": "Unlock after portfolio and commercial readiness proof."}
+  ]
+}
+
 Rules:
 - The root must have at least 2 meaningful children.
-- Every non-terminal node should have 2 meaningful children when possible.
+- Every child id listed anywhere must have a matching object in "nodes"; never reference phantom children.
+- Every non-terminal node should have 2 meaningful children when possible, and those children must continue deeper at least one more level unless they are terminal mastery nodes.
 - Each branch must represent a different style, identity, or specialization path.
 - Include tradeoffs such as speed vs accuracy, tactical vs positional, creative vs technical, strength vs endurance.
-- Include 12 to 24 nodes total.
+- Include 14 to 28 nodes total.
 - Include at least 2 hidden future nodes with unlockCondition based on repeated behavior/proof patterns.
 - Avoid straight-line checklists; create divergent identities and career/style paths.
 - Use concise titles and concrete proof prompts.`;
+}
+
+function buildBranchExpansionPrompt(tree: SkillTree, node: SkillNode, signals: string[]): string {
+  const existingNodes = tree.nodes.map((candidate) => ({
+    id: candidate.id,
+    title: candidate.title,
+    branch: candidate.branch,
+    identity: candidate.identity,
+    status: candidate.status,
+    prerequisites: candidate.prerequisites,
+  }));
+
+  return `Grow one selected branch in an existing Ascend RPG skill tree.
+
+Goal: ${tree.rootGoal}
+Selected node to expand:
+${JSON.stringify({
+  id: node.id,
+  title: node.title,
+  description: node.description,
+  branch: node.branch,
+  identity: node.identity,
+  tradeoff: node.tradeoff,
+  difficulty: node.difficulty,
+}, null, 2)}
+
+User behavior/proof signals: ${signals.join(', ') || 'none provided'}
+Existing tree nodes, for context and to avoid duplicates:
+${JSON.stringify(existingNodes, null, 2)}
+
+Return only valid JSON matching:
+{
+  "nodes": [
+    {"id": "new_child_id", "title": "...", "description": "...", "children": ["new_grandchild_a", "new_grandchild_b"], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "hidden": false, "unlockCondition": "..."}
+  ]
+}
+
+Rules:
+- Add 3 to 8 NEW nodes under the selected node.
+- The selected node is the parent of the first layer of returned nodes.
+- Every child id in returned nodes must have a matching object in returned "nodes"; no phantom children.
+- Make the expansion deeper than one level: at least one returned child must itself have 2 children.
+- Continue the selected branch identity, but introduce a more specific specialization.
+- Include at least one tradeoff and one hidden future node with unlockCondition.
+- Do not duplicate existing node titles or ids.`;
+}
+
+export function expandSkillTreeFromAiBranch(
+  tree: SkillTree,
+  nodeId: string,
+  rawJson: string,
+  now = new Date().toISOString(),
+): SkillTree {
+  const selected = findNode(tree, nodeId);
+  const expansion = aiBranchExpansionSchema.parse(JSON.parse(stripJson(rawJson)));
+  assertNoPhantomChildren(expansion.nodes);
+  const existingTitles = new Set(tree.nodes.map((node) => node.title.toLowerCase()));
+  const newBlueprints = expansion.nodes.filter((node) => !existingTitles.has(node.title.toLowerCase()));
+  if (newBlueprints.length < 2) {
+    throw new Error('AI branch expansion did not include enough new nodes.');
+  }
+  const idMap = createIdMap(
+    newBlueprints.map((node) => node.id),
+    `${selected.id}-growth`,
+  );
+  const rootChildren = newBlueprints.filter((node) => !newBlueprints.some((candidate) => candidate.children.includes(node.id)));
+  const rootChildIds = new Set(rootChildren.map((node) => node.id));
+  const completed = new Set(tree.nodes.filter((node) => node.status === 'complete').map((node) => node.id));
+  const positions = layoutExpansion(selected, newBlueprints);
+  const newNodes: SkillNode[] = newBlueprints.map((node) => {
+    const parents = newBlueprints
+      .filter((candidate) => candidate.children.includes(node.id))
+      .map((candidate) => idMap.get(candidate.id)!)
+      .filter(Boolean);
+    const prerequisites = rootChildIds.has(node.id) ? [selected.id] : parents;
+    const difficulty = node.difficulty;
+    return {
+      id: idMap.get(node.id)!,
+      title: node.title,
+      description: node.description,
+      difficulty,
+      xp: node.xp ?? difficultyXp[difficulty],
+      estimatedHours: node.estimatedHours ?? (difficulty === 'apprentice' ? 2 : difficulty === 'adept' ? 4 : difficulty === 'expert' ? 7 : 12),
+      prerequisites,
+      proof: {
+        type: difficulty === 'expert' || difficulty === 'legendary' ? 'metric' : 'journal',
+        prompt: node.proofPrompt,
+      },
+      branch: node.branch,
+      identity: node.identity,
+      tradeoff: node.tradeoff,
+      unlockCondition: node.unlockCondition,
+      rarity: difficulty === 'legendary' ? 'legendary' : difficulty === 'expert' ? 'epic' : difficulty === 'adept' ? 'rare' : 'common',
+      hidden: node.hidden,
+      status: prerequisites.every((prerequisite) => completed.has(prerequisite)) ? 'unlocked' : 'locked',
+      position: positions.get(node.id) ?? { x: selected.position.x + 260, y: selected.position.y },
+    };
+  });
+  const newEdges: SkillEdge[] = [];
+  rootChildren.forEach((child) => {
+    const target = idMap.get(child.id)!;
+    newEdges.push({ id: `${selected.id}-${target}`, source: selected.id, target });
+  });
+  newBlueprints.forEach((source) => {
+    source.children.forEach((targetId) => {
+      const sourceId = idMap.get(source.id);
+      const target = idMap.get(targetId);
+      if (sourceId && target) {
+        newEdges.push({ id: `${sourceId}-${target}`, source: sourceId, target });
+      }
+    });
+  });
+
+  return {
+    ...tree,
+    nodes: [...tree.nodes, ...newNodes],
+    edges: [...tree.edges, ...newEdges],
+    updatedAt: now,
+  };
+}
+
+function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: string[], now = new Date().toISOString()): SkillTree {
+  const selected = findNode(tree, nodeId);
+  const focus = signals[0]?.trim() || selected.identity || selected.branch;
+  const branch = `${selected.branch}-growth`;
+  return expandSkillTreeFromAiBranch(
+    tree,
+    nodeId,
+    JSON.stringify({
+      nodes: [
+        {
+          id: 'focused_drill_path',
+          title: `${selected.title} Drill Path`,
+          description: `A deeper practice branch for ${selected.title}, tuned toward ${focus}.`,
+          children: ['feedback_loop_drill', 'pressure_test_drill'],
+          difficulty: nextDifficulty(selected.difficulty),
+          branch,
+          identity: `${selected.identity ?? selected.branch} Specialist`,
+          tradeoff: 'Focused depth vs broader exploration',
+          proofPrompt: `Complete a focused drill for ${selected.title}.`,
+        },
+        {
+          id: 'feedback_loop_drill',
+          title: `${selected.title} Feedback Loop`,
+          description: 'Review proof, identify a pattern, and choose the next adjustment.',
+          children: ['hidden_mastery_branch'],
+          difficulty: 'adept',
+          branch,
+          identity: 'Reflective Specialist',
+          tradeoff: 'Analysis depth vs practice volume',
+          proofPrompt: 'Write one review with a next-step decision.',
+        },
+        {
+          id: 'pressure_test_drill',
+          title: `${selected.title} Pressure Test`,
+          description: 'Apply this skill under time, fatigue, audience, or real-world constraints.',
+          children: ['hidden_mastery_branch'],
+          difficulty: 'expert',
+          branch,
+          identity: 'Pressure Performer',
+          tradeoff: 'Performance pressure vs clean technique',
+          proofPrompt: 'Record one pressure-tested attempt.',
+        },
+        {
+          id: 'hidden_mastery_branch',
+          title: `${selected.title} Mastery Branch`,
+          description: 'A hidden advanced branch that opens after repeated proof patterns.',
+          children: [],
+          difficulty: 'legendary',
+          branch,
+          identity: 'Branch Master',
+          tradeoff: 'Specialization vs adaptability',
+          proofPrompt: 'Summarize repeated proof and the unlocked advanced target.',
+          hidden: true,
+          unlockCondition: `Unlock after repeated ${focus} proof on ${selected.title}.`,
+        },
+      ],
+    }),
+    now,
+  );
+}
+
+function assertNoPhantomChildren(nodes: Array<{ id: string; children: string[] }>): void {
+  const ids = new Set(nodes.map((node) => node.id));
+  const missing = nodes.flatMap((node) => node.children.filter((child) => !ids.has(child)));
+  if (missing.length) {
+    throw new Error(`AI branch references missing child nodes: ${missing.join(', ')}`);
+  }
+}
+
+function findNode(tree: SkillTree, nodeId: string): SkillNode {
+  const node = tree.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) throw new Error('Skill node not found.');
+  return node;
+}
+
+function nextDifficulty(difficulty: Difficulty): Difficulty {
+  if (difficulty === 'starter') return 'apprentice';
+  if (difficulty === 'apprentice') return 'adept';
+  if (difficulty === 'adept') return 'expert';
+  return 'legendary';
+}
+
+function layoutExpansion(parent: SkillNode, nodes: Array<{ id: string; children: string[] }>): Map<string, { x: number; y: number }> {
+  const syntheticRoot = '__selected__';
+  const positions = layoutGraph(syntheticRoot, [{ id: syntheticRoot, children: nodes.filter((node) => !nodes.some((candidate) => candidate.children.includes(node.id))).map((node) => node.id) }, ...nodes]);
+  const parentOffset = positions.get(syntheticRoot) ?? { x: 0, y: 360 };
+  positions.delete(syntheticRoot);
+  const adjusted = new Map<string, { x: number; y: number }>();
+  positions.forEach((position, id) => {
+    adjusted.set(id, {
+      x: parent.position.x + 280 + position.x - parentOffset.x,
+      y: parent.position.y + position.y - parentOffset.y,
+    });
+  });
+  return adjusted;
 }
 
 function stripJson(value: string): string {

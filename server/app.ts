@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 import { adaptSkillTree, completeNode } from '../src/shared/skillTree.js';
 import type { DashboardPayload, GoalSummary, PublicUser, SkillTree } from '../src/shared/types.js';
-import { createSkillTreeGenerator, type TreeGenerator } from './aiSkillTree.js';
+import { createBranchExpander, createSkillTreeGenerator, type BranchExpander, type TreeGenerator } from './aiSkillTree.js';
 import { JsonStore, type UserRecord } from './dataStore.js';
 
 const authSchema = z.object({
@@ -37,6 +37,11 @@ const adaptSchema = z.object({
   signals: z.array(z.string().trim().min(1).max(80)).min(1),
 });
 
+const expandSchema = z.object({
+  nodeId: z.string(),
+  signals: z.array(z.string().trim().min(1).max(80)).default([]),
+});
+
 type AuthenticatedRequest = Request & {
   user?: PublicUser;
 };
@@ -46,6 +51,7 @@ export type AppOptions = {
   jwtSecret?: string;
   serveStatic?: boolean;
   treeGenerator?: TreeGenerator;
+  branchExpander?: BranchExpander;
 };
 
 function signToken(user: PublicUser, jwtSecret: string): string {
@@ -79,6 +85,7 @@ export function createApp({
   jwtSecret = process.env.JWT_SECRET ?? 'dev-secret',
   serveStatic = false,
   treeGenerator = createSkillTreeGenerator(),
+  branchExpander = createBranchExpander(),
 }: AppOptions) {
   const app = express();
 
@@ -202,6 +209,18 @@ export function createApp({
     }
   });
 
+  app.post('/api/goals/:goalId/expand', requireAuth, async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const input = expandSchema.parse(req.body);
+      const tree = await updateGoal(store, req.user!.id, String(req.params.goalId), (goal) =>
+        branchExpander(goal, input.nodeId, input.signals),
+      );
+      res.json(tree);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   if (serveStatic) {
     const dirname = fileURLToPath(new URL('.', import.meta.url));
     const staticRoot = join(dirname, '../dist');
@@ -229,15 +248,15 @@ async function updateGoal(
   store: JsonStore,
   userId: string,
   goalId: string,
-  updater: (goal: SkillTree) => SkillTree,
+  updater: (goal: SkillTree) => SkillTree | Promise<SkillTree>,
 ): Promise<SkillTree> {
-  return store.update((data) => {
+  return store.update(async (data) => {
     const goals = data.goals[userId] ?? [];
     const index = goals.findIndex((goal) => goal.id === goalId);
     if (index === -1) {
       throw new Error('Goal not found.');
     }
-    const updated = updater(goals[index]);
+    const updated = await updater(goals[index]);
     goals[index] = updated;
     data.goals[userId] = goals;
     return updated;
