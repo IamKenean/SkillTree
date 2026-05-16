@@ -35,6 +35,10 @@ button:disabled {
   opacity: 0.56;
 }
 
+button[aria-disabled='true'] {
+  cursor: pointer;
+}
+
 label {
   display: grid;
   gap: 0.45rem;
