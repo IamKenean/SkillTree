@@ -72,6 +72,60 @@ describe('Gemini skill tree conversion', () => {
     expect(tree.nodes.slice(1).every((node) => node.prerequisites.length === 1)).toBe(true);
   });
 
+
+  it('drops short Gemini unlockCondition strings instead of failing validation', () => {
+    const tree = buildSkillTreeFromAiGraph(
+      {
+        title: 'I want to learn chess',
+        experienceLevel: 'Beginner',
+        weeklyHours: 4,
+        interests: 'tactics, openings',
+      },
+      JSON.stringify({
+        root: {
+          id: 'chess_start',
+          title: 'Start Chess',
+          description: 'Choose the first identity direction for your chess journey.',
+          children: ['calculation_style', 'strategy_style'],
+          difficulty: 'starter',
+          branch: 'origin',
+          identity: 'Chess Explorer',
+          tradeoff: 'Calculation vs strategic understanding',
+          proofPrompt: 'Play one game and write which style felt more natural.',
+        },
+        nodes: [
+          {
+            id: 'calculation_style',
+            title: 'Calculation-Based Player',
+            description: 'Develop through tactics, forcing lines, and concrete move-by-move reading.',
+            children: [],
+            difficulty: 'apprentice',
+            branch: 'calculation',
+            identity: 'Calculator',
+            tradeoff: 'Sharp tactics vs long-term planning',
+            proofPrompt: 'Solve 10 tactics and note which motif repeats.',
+            unlockCondition: 'locked',
+          },
+          {
+            id: 'strategy_style',
+            title: 'Strategy-Based Player',
+            description: 'Develop through plans, positional choices, endgames, and long-term pressure.',
+            children: [],
+            difficulty: 'apprentice',
+            branch: 'strategy',
+            identity: 'Strategist',
+            tradeoff: 'Long-term pressure vs immediate tactics',
+            proofPrompt: 'Review one game and identify the main plan.',
+            unlockCondition: 'none',
+          },
+        ],
+      }),
+    );
+
+    expect(tree.generationSource).toBe('gemini');
+    expect(tree.nodes.every((node) => node.unlockCondition === undefined)).toBe(true);
+  });
+
   it('normalizes over-generated Gemini seed graphs instead of falling back', () => {
     const tree = buildSkillTreeFromAiGraph(
       {

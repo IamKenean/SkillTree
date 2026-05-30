@@ -11,6 +11,16 @@ const difficultyXp: Record<Difficulty, number> = {
   legendary: 420,
 };
 
+
+function optionalMinString(min: number, max: number) {
+  return z.preprocess((value) => {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    if (trimmed.length < min) return undefined;
+    return trimmed.slice(0, max);
+  }, z.string().min(min).max(max).optional());
+}
+
 const aiNodeSchema = z.object({
   id: z.string().min(2).max(48),
   title: z.string().min(3).max(80),
@@ -25,7 +35,7 @@ const aiNodeSchema = z.object({
   proofPrompt: z.string().min(8).max(180),
   tips: z.array(z.string().min(4).max(140)).max(4).default([]),
   hidden: z.boolean().default(false),
-  unlockCondition: z.string().min(8).max(180).optional(),
+  unlockCondition: optionalMinString(8, 180),
 });
 
 const paletteSchema = z.object({
