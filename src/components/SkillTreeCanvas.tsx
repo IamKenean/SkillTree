@@ -28,11 +28,7 @@ function SkillNodeCard({ data }: NodeProps<Node<SkillNodeData>>) {
   const isComplete = skill.status === 'complete';
 
   return (
-<<<<<<< HEAD
-    <button className={`skill-node ${skill.status} ${skill.rarity}`} type="button" aria-disabled={isLocked}>
-=======
     <button className={`skill-node ${skill.status} ${skill.rarity}`} type="button" disabled={isLocked}>
->>>>>>> origin/main
       <Handle type="target" position={Position.Left} />
       <div className="node-glow" />
       <div className="node-topline">
