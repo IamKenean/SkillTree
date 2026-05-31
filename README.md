@@ -7,6 +7,7 @@ Ascend is a full-stack adaptive skill tree MVP for personal growth. Users create
 - JWT authentication with bcrypt password hashing.
 - Goal creation with experience level, weekly time, and focus interests.
 - Optional Gemini-powered skill tree generation with deterministic nonlinear blueprints as a fallback.
+- XP rewards, prerequisites, proof prompts, hidden future nodes, and rarity tiers.
 - React Flow skill graph with zoom, pan, locked/unlocked/complete states, node detail panels, and dashboard metrics.
 - Progress tracking with journal entries, proof URLs, focus tags, streaks, levels, achievements, and adaptive specialization branches.
 - Express API with JSON persistence for local development and production demo deployments.
