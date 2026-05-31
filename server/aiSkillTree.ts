@@ -12,13 +12,24 @@ const difficultyXp: Record<Difficulty, number> = {
 };
 
 
-function optionalMinString(min: number, max: number) {
+function sanitizeOptionalString(min: number, max: number) {
+  return z.preprocess(
+    (value) => {
+      if (value == null || typeof value !== 'string') return undefined;
+      const trimmed = value.trim();
+      if (trimmed.length < min) return undefined;
+      return trimmed.slice(0, max);
+    },
+    z.string().min(min).max(max).optional(),
+  );
+}
+
+function sanitizeRequiredString(min: number, max: number) {
   return z.preprocess((value) => {
-    if (typeof value !== 'string') return undefined;
+    if (value == null || typeof value !== 'string') return value;
     const trimmed = value.trim();
-    if (trimmed.length < min) return undefined;
-    return trimmed.slice(0, max);
-  }, z.string().min(min).max(max).optional());
+    return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+  }, z.string().min(min).max(max));
 }
 
 const aiNodeSchema = z.object({
@@ -29,13 +40,13 @@ const aiNodeSchema = z.object({
   difficulty: z.enum(['starter', 'apprentice', 'adept', 'expert', 'legendary']).default('apprentice'),
   branch: z.string().min(2).max(48),
   identity: z.string().min(3).max(80),
-  tradeoff: z.string().min(3).max(120).optional(),
+  tradeoff: sanitizeOptionalString(3, 120),
   xp: z.number().int().min(25).max(600).optional(),
   estimatedHours: z.number().int().min(1).max(40).optional(),
-  proofPrompt: z.string().min(8).max(180),
+  proofPrompt: sanitizeRequiredString(8, 180),
   tips: z.array(z.string().min(4).max(140)).max(4).default([]),
   hidden: z.boolean().default(false),
-  unlockCondition: optionalMinString(8, 180),
+  unlockCondition: sanitizeOptionalString(8, 180),
 });
 
 const paletteSchema = z.object({

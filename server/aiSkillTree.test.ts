@@ -227,6 +227,56 @@ describe('Gemini skill tree conversion', () => {
     expect(tree.nodes.slice(1).every((node) => node.prerequisites.length === 1)).toBe(true);
   });
 
+
+  it('accepts null unlockCondition and truncates long branch expansion proof prompts', () => {
+    const tree = generateSkillTree({
+      title: 'I want to improve at photography',
+      experienceLevel: 'Beginner',
+      weeklyHours: 4,
+      interests: 'street photography, portraits',
+    });
+    const selected = tree.nodes.find((node) => node.title === 'Street Photography Path') ?? tree.nodes[0];
+    const longPrompt = 'Capture three layered street frames with foreground, subject, and background relationships. '.repeat(4).slice(0, 220);
+
+    const expanded = expandSkillTreeFromAiBranch(
+      tree,
+      selected.id,
+      JSON.stringify({
+        nodes: [
+          {
+            id: 'street_sequences',
+            title: 'Street Sequence Building',
+            description: 'Create a connected set of street images around one visual theme.',
+            children: ['gesture_hunting'],
+            difficulty: 'adept',
+            branch: 'street-growth',
+            identity: 'Street Storyteller',
+            tradeoff: 'Narrative cohesion vs spontaneous moments',
+            proofPrompt: 'Shoot a five-photo street sequence.',
+            unlockCondition: null,
+          },
+          {
+            id: 'gesture_hunting',
+            title: 'Gesture Hunting',
+            description: 'Anticipate small human gestures that create emotion and story.',
+            children: [],
+            difficulty: 'expert',
+            branch: 'street-growth',
+            identity: 'Moment Hunter',
+            tradeoff: 'Patience vs volume',
+            proofPrompt: longPrompt,
+            unlockCondition: null,
+          },
+        ],
+      }),
+    );
+
+    const gesture = expanded.nodes.find((node) => node.title === 'Gesture Hunting');
+    expect(expanded.nodes.find((node) => node.title === 'Street Sequence Building')?.unlockCondition).toBeUndefined();
+    expect(gesture?.proof?.prompt.length).toBeLessThanOrEqual(180);
+    expect(gesture?.proof?.prompt.length).toBeGreaterThanOrEqual(8);
+  });
+
   it('expands a selected node with concrete child and grandchild nodes', () => {
     const tree = generateSkillTree({
       title: 'I want to improve at photography',
