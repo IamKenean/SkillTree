@@ -32,6 +32,69 @@ function sanitizeRequiredString(min: number, max: number) {
   }, z.string().min(min).max(max));
 }
 
+
+function sanitizeOptionalField(value: unknown, min: number, max: number): string | undefined {
+  if (value == null || typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length < min) return undefined;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
+function clampRequiredField(value: unknown, min: number, max: number): unknown {
+  if (value == null || typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
+function sanitizeAiNode(node: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...node };
+  if ('proofPrompt' in next) next.proofPrompt = clampRequiredField(next.proofPrompt, 8, 180);
+  if ('description' in next) next.description = clampRequiredField(next.description, 12, 360);
+  if ('title' in next) next.title = clampRequiredField(next.title, 3, 80);
+  if ('identity' in next) next.identity = clampRequiredField(next.identity, 3, 80);
+  if ('branch' in next) next.branch = clampRequiredField(next.branch, 2, 48);
+
+  const unlockCondition = sanitizeOptionalField(next.unlockCondition, 8, 180);
+  if (unlockCondition === undefined) delete next.unlockCondition;
+  else next.unlockCondition = unlockCondition;
+
+  const tradeoff = sanitizeOptionalField(next.tradeoff, 3, 120);
+  if (tradeoff === undefined) delete next.tradeoff;
+  else next.tradeoff = tradeoff;
+
+  if (Array.isArray(next.tips)) {
+    next.tips = next.tips
+      .filter((tip): tip is string => typeof tip === 'string')
+      .map((tip) => tip.trim().slice(0, 140))
+      .filter((tip) => tip.length >= 4)
+      .slice(0, 4);
+  }
+
+  return next;
+}
+
+function sanitizeAiPayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== 'object') return payload;
+  const record = payload as Record<string, unknown>;
+  const next: Record<string, unknown> = { ...record };
+
+  if (record.root && typeof record.root === 'object') {
+    next.root = sanitizeAiNode(record.root as Record<string, unknown>);
+  }
+
+  if (Array.isArray(record.nodes)) {
+    next.nodes = record.nodes
+      .filter((node): node is Record<string, unknown> => !!node && typeof node === 'object')
+      .map((node) => sanitizeAiNode(node));
+  }
+
+  return next;
+}
+
+function parseAiJson<T>(rawJson: string, schema: z.ZodType<T>): T {
+  return schema.parse(sanitizeAiPayload(JSON.parse(stripJson(rawJson))));
+}
+
 const aiNodeSchema = z.object({
   id: z.string().min(2).max(48),
   title: z.string().min(3).max(80),
@@ -125,7 +188,7 @@ export function createBranchExpander(apiKey = process.env.GEMINI_API_KEY): Branc
 }
 
 export function buildSkillTreeFromAiGraph(input: GoalInput, rawJson: string, now = new Date().toISOString()): SkillTree {
-  const graph = normalizeSeedGraph(aiGraphSchema.parse(JSON.parse(stripJson(rawJson))));
+  const graph = normalizeSeedGraph(parseAiJson(rawJson, aiGraphSchema));
   const all = [graph.root, ...graph.nodes];
   assertNoPhantomChildren(all);
   const rootSlug = slug(input.title) || 'personal-growth';
@@ -273,7 +336,8 @@ Rules:
 - Generate a named color palette specific to the goal. Love/social goals can use cherry blossom tones; gardening can use greens; fighting can use red corner tones; photography can use golden-hour tones.
 - Include 2 to 4 practical tips per node that help the user complete the proof prompt.
 - Avoid checklist steps. Prefer identity choices like "Calculation-Based Player" vs "Strategy-Based Player".
-- Use concise titles and concrete proof prompts.`;
+- Use concise titles and concrete proof prompts under 180 characters.
+- Omit unlockCondition on visible starter nodes; never set it to null.`;
 }
 
 function buildBranchExpansionPrompt(tree: SkillTree, node: SkillNode, signals: string[]): string {
@@ -322,6 +386,8 @@ Rules:
 - Never use generic/meta titles such as "Feedback Loop", "Pressure Test", "Advanced X", "X Mastery Branch", or titles that simply repeat the selected node with a suffix.
 - Do not include the selected node title inside new node titles unless it is truly a natural named skill.
 - Include at least one tradeoff and one hidden future node with unlockCondition.
+- Omit unlockCondition entirely on visible nodes; never set it to null.
+- Keep every proofPrompt at or under 180 characters.
 - Include 2 to 4 practical tips per node.
 - Do not duplicate existing node titles or ids.`;
 }
@@ -333,7 +399,7 @@ export function expandSkillTreeFromAiBranch(
   now = new Date().toISOString(),
 ): SkillTree {
   const selected = findNode(tree, nodeId);
-  const expansion = aiBranchExpansionSchema.parse(JSON.parse(stripJson(rawJson)));
+  const expansion = parseAiJson(rawJson, aiBranchExpansionSchema);
   assertNoPhantomChildren(expansion.nodes);
   const normalizedExpansionNodes = removeExpansionWrapperNodes(expansion.nodes, selected);
   assertNoPhantomChildren(normalizedExpansionNodes);
