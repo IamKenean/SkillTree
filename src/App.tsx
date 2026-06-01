@@ -4,16 +4,15 @@ import {
   Flame,
   Gauge,
   LogOut,
-  Medal,
   Plus,
   Rocket,
   ShieldCheck,
   Trophy,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, loadSession, saveSession, type Session } from './api.js';
 import { SkillTreeCanvas } from './components/SkillTreeCanvas.js';
-import type { DashboardPayload, GoalInput, SkillNode, SkillTree } from './shared/types.js';
+import type { DashboardPayload, GoalInput, SkillTree } from './shared/types.js';
 
 const starterGoal: GoalInput = {
   title: 'I want to get stronger with calisthenics',
@@ -27,11 +26,13 @@ function App() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
+  const [expandedNodeId, setExpandedNodeId] = useState<string | undefined>();
+  const [completingNodeId, setCompletingNodeId] = useState<string | undefined>();
+  const [xpBurst, setXpBurst] = useState<number | undefined>();
   const [error, setError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
   const activeGoal = dashboard?.goals.find((goal) => goal.id === activeGoalId) ?? dashboard?.goals[0] ?? null;
-  const selectedNode = activeGoal?.nodes.find((node) => node.id === selectedNodeId) ?? activeGoal?.nodes[0] ?? null;
 
   useEffect(() => {
     if (!session) return;
@@ -138,6 +139,7 @@ function App() {
             onSelect={(goal) => {
               setActiveGoalId(goal.id);
               setSelectedNodeId(goal.nodes[0]?.id);
+              setExpandedNodeId(undefined);
             }}
           />
         </aside>
@@ -148,8 +150,37 @@ function App() {
               <DashboardStats tree={activeGoal} />
               <SkillTreeCanvas
                 tree={activeGoal}
-                selectedNodeId={selectedNode?.id}
+                selectedNodeId={selectedNodeId}
+                expandedNodeId={expandedNodeId}
+                completingNodeId={completingNodeId}
+                xpBurst={xpBurst}
+                disabled={isBusy}
                 onSelectNode={(node) => setSelectedNodeId(node.id)}
+                onExpandNode={(node) => {
+                  setSelectedNodeId(node.id);
+                  setExpandedNodeId(node.id);
+                }}
+                onClosePopover={() => setExpandedNodeId(undefined)}
+                onComplete={(body) =>
+                  runAction(async () => {
+                    const node = activeGoal.nodes.find((candidate) => candidate.id === body.nodeId);
+                    setCompletingNodeId(body.nodeId);
+                    setXpBurst(node?.xp);
+                    try {
+                      const tree = await api.completeNode(session.token, activeGoal.id, body);
+                      applyTree(tree, body.nodeId);
+                      window.setTimeout(() => {
+                        setCompletingNodeId(undefined);
+                        setExpandedNodeId(undefined);
+                      }, 900);
+                    } catch (completionError) {
+                      setCompletingNodeId(undefined);
+                      setXpBurst(undefined);
+                      throw completionError;
+                    }
+                  })
+                }
+                onXpBurstDone={() => setXpBurst(undefined)}
               />
             </>
           ) : (
@@ -163,31 +194,6 @@ function App() {
             />
           )}
         </section>
-
-        <aside className="detail-panel">
-          {activeGoal && selectedNode ? (
-            <NodeDetail
-              tree={activeGoal}
-              node={selectedNode}
-              disabled={isBusy}
-              onComplete={(body) =>
-                runAction(async () => {
-                  const tree = await api.completeNode(session.token, activeGoal.id, body);
-                  applyTree(tree);
-                })
-              }
-              onAdapt={(signals) =>
-                runAction(async () => {
-                  const tree = await api.adaptGoal(session.token, activeGoal.id, signals);
-                  const evolutionNode = tree.nodes.find((candidate) => candidate.branch.includes('evolution'));
-                  applyTree(tree, evolutionNode?.id);
-                })
-              }
-            />
-          ) : (
-            <div className="panel muted-panel">Select or create a goal to inspect its skill nodes.</div>
-          )}
-        </aside>
       </section>
     </main>
   );
@@ -269,43 +275,40 @@ function AuthScreen({
 }
 
 function GoalCreator({ onCreate, disabled }: { onCreate: (input: GoalInput) => void; disabled: boolean }) {
-  const [input, setInput] = useState<GoalInput>(starterGoal);
+  const [title, setTitle] = useState(starterGoal.title);
+  const [experienceLevel, setExperienceLevel] = useState(starterGoal.experienceLevel);
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    onCreate(input);
+    onCreate({
+      title,
+      experienceLevel,
+      weeklyHours: 5,
+      interests: title,
+    });
   }
 
   return (
-    <form className="panel stack" onSubmit={submit}>
+    <form className="panel stack goal-creator" onSubmit={submit}>
       <div className="panel-title">
         <BrainCircuit size={18} />
-        Generate tree
+        New quest path
       </div>
       <label>
-        Main goal
-        <textarea value={input.title} onChange={(event) => setInput({ ...input, title: event.target.value })} />
-      </label>
-      <label>
-        Experience level
+        Goal
         <input
-          value={input.experienceLevel}
-          onChange={(event) => setInput({ ...input, experienceLevel: event.target.value })}
+          placeholder="What do you want to learn?"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
         />
       </label>
       <label>
-        Hours per week
-        <input
-          type="number"
-          min={1}
-          max={80}
-          value={input.weeklyHours}
-          onChange={(event) => setInput({ ...input, weeklyHours: Number(event.target.value) })}
-        />
-      </label>
-      <label>
-        Interests
-        <input value={input.interests} onChange={(event) => setInput({ ...input, interests: event.target.value })} />
+        Level
+        <select value={experienceLevel} onChange={(event) => setExperienceLevel(event.target.value)}>
+          <option>Beginner</option>
+          <option>Intermediate</option>
+          <option>Advanced</option>
+        </select>
       </label>
       <button className="primary-button" disabled={disabled} type="submit">
         <Plus size={16} /> Generate
@@ -394,120 +397,6 @@ function EmptyState({ onUseStarter }: { onUseStarter: () => void }) {
       <button className="primary-button" type="button" onClick={onUseStarter}>
         Generate starter path
       </button>
-    </div>
-  );
-}
-
-function NodeDetail({
-  tree,
-  node,
-  onComplete,
-  onAdapt,
-  disabled,
-}: {
-  tree: SkillTree;
-  node: SkillNode;
-  disabled: boolean;
-  onComplete: (body: { nodeId: string; note: string; focusTags: string[]; proofUrl?: string }) => void;
-  onAdapt: (signals: string[]) => void;
-}) {
-  const [note, setNote] = useState('Finished a focused practice rep and logged what improved.');
-  const [tags, setTags] = useState('pushups, dips, pullups');
-  const [proofUrl, setProofUrl] = useState('');
-  const [signals, setSignals] = useState('pushups, dips, pullups, handstands');
-
-  const prerequisites = useMemo(
-    () => node.prerequisites.map((id) => tree.nodes.find((candidate) => candidate.id === id)?.title ?? id),
-    [node.prerequisites, tree.nodes],
-  );
-
-  return (
-    <div className="panel stack node-detail">
-      <div className="panel-title">
-        <Medal size={18} />
-        Node details
-      </div>
-      <span className={`status-pill ${node.status}`}>{node.status}</span>
-      <h2>{node.title}</h2>
-      <p>{node.description}</p>
-      <dl className="node-meta">
-        <div>
-          <dt>Difficulty</dt>
-          <dd>{node.difficulty}</dd>
-        </div>
-        <div>
-          <dt>Reward</dt>
-          <dd>{node.xp} XP</dd>
-        </div>
-        <div>
-          <dt>Estimate</dt>
-          <dd>{node.estimatedHours}h</dd>
-        </div>
-      </dl>
-      <div>
-        <strong>Prerequisites</strong>
-        <p className="muted">{prerequisites.length ? prerequisites.join(', ') : 'None'}</p>
-      </div>
-      {node.proof && (
-        <div className="proof-box">
-          <strong>Proof prompt</strong>
-          <p>{node.proof.prompt}</p>
-        </div>
-      )}
-
-      {node.status === 'unlocked' && (
-        <form
-          className="stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onComplete({
-              nodeId: node.id,
-              note,
-              focusTags: tags.split(',').map((tag) => tag.trim()),
-              proofUrl: proofUrl || undefined,
-            });
-          }}
-        >
-          <label>
-            Journal entry
-            <textarea value={note} onChange={(event) => setNote(event.target.value)} />
-          </label>
-          <label>
-            Focus tags
-            <input value={tags} onChange={(event) => setTags(event.target.value)} />
-          </label>
-          <label>
-            Proof URL
-            <input placeholder="https://..." value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} />
-          </label>
-          <button className="primary-button" disabled={disabled} type="submit">
-            Complete node
-          </button>
-        </form>
-      )}
-
-      <div className="adapt-box">
-        <strong>Adaptive evolution</strong>
-        <p className="muted">Add repeated signals and Ascend creates a new specialization branch.</p>
-        <input value={signals} onChange={(event) => setSignals(event.target.value)} />
-        <button
-          className="secondary-button"
-          disabled={disabled}
-          type="button"
-          onClick={() => onAdapt(signals.split(',').map((signal) => signal.trim()))}
-        >
-          Evolve tree
-        </button>
-      </div>
-
-      {tree.achievements.length > 0 && (
-        <div className="achievement-list">
-          <strong>Achievements</strong>
-          {tree.achievements.map((achievement) => (
-            <span key={achievement.id}>{achievement.title}</span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
