@@ -4,7 +4,6 @@ import {
   Flame,
   Gauge,
   LogOut,
-  Medal,
   Plus,
   Rocket,
   ShieldCheck,
@@ -12,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { api, loadSession, saveSession, type Session } from './api.js';
+import { NodeQuestModal } from './components/NodeQuestModal.js';
 import { SkillTreeCanvas } from './components/SkillTreeCanvas.js';
 import type { DashboardPayload, GoalInput, SkillNode, SkillTree } from './shared/types.js';
 
@@ -34,11 +34,13 @@ function App() {
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
+  const [questNodeId, setQuestNodeId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
   const activeGoal = dashboard?.goals.find((goal) => goal.id === activeGoalId) ?? dashboard?.goals[0] ?? null;
   const selectedNode = activeGoal?.nodes.find((node) => node.id === selectedNodeId) ?? activeGoal?.nodes[0] ?? null;
+  const questNode = activeGoal?.nodes.find((node) => node.id === questNodeId) ?? null;
 
   useEffect(() => {
     if (!session) return;
@@ -157,6 +159,10 @@ function App() {
                 tree={activeGoal}
                 selectedNodeId={selectedNode?.id}
                 onSelectNode={(node) => setSelectedNodeId(node.id)}
+                onOpenNode={(node) => {
+                  setSelectedNodeId(node.id);
+                  setQuestNodeId(node.id);
+                }}
               />
             </>
           ) : (
@@ -170,33 +176,37 @@ function App() {
             />
           )}
         </section>
-
-        <aside className="detail-panel">
-          {activeGoal && selectedNode ? (
-            <NodeDetail
-              tree={activeGoal}
-              node={selectedNode}
-              disabled={isBusy}
-              onComplete={(body) =>
-                runAction(async () => {
-                  const tree = await api.completeNode(session.token, activeGoal.id, body);
-                  applyTree(tree);
-                })
-              }
-              onGrowBranch={(nodeId, signals) =>
-                runAction(async () => {
-                  const previousIds = new Set(activeGoal.nodes.map((candidate) => candidate.id));
-                  const tree = await api.expandGoal(session.token, activeGoal.id, nodeId, signals);
-                  const newNode = tree.nodes.find((candidate) => !previousIds.has(candidate.id));
-                  applyTree(tree, newNode?.id);
-                })
-              }
-            />
-          ) : (
-            <div className="panel muted-panel">Select or create a goal to inspect its skill nodes.</div>
-          )}
-        </aside>
       </section>
+
+      {activeGoal && questNode && (
+        <NodeQuestModal
+          tree={activeGoal}
+          node={questNode}
+          disabled={isBusy}
+          onClose={() => setQuestNodeId(null)}
+          onFinish={async ({ nodeId, note, focusTags, proofUrl, growBranch, signals }) => {
+            await runAction(async () => {
+              let tree = activeGoal;
+              if (questNode.status === 'unlocked') {
+                tree = await api.completeNode(session.token, activeGoal.id, {
+                  nodeId,
+                  note,
+                  focusTags,
+                  proofUrl,
+                });
+                applyTree(tree);
+              }
+
+              if (growBranch) {
+                const previousIds = new Set(tree.nodes.map((candidate) => candidate.id));
+                tree = await api.expandGoal(session.token, activeGoal.id, nodeId, signals);
+                const newNode = tree.nodes.find((candidate) => !previousIds.has(candidate.id));
+                applyTree(tree, newNode?.id);
+              }
+            });
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -412,176 +422,6 @@ function EmptyState({ onUseStarter }: { onUseStarter: () => void }) {
       <button className="primary-button" type="button" onClick={onUseStarter}>
         Generate starter path
       </button>
-    </div>
-  );
-}
-
-function NodeDetail({
-  tree,
-  node,
-  onComplete,
-  onGrowBranch,
-  disabled,
-}: {
-  tree: SkillTree;
-  node: SkillNode;
-  disabled: boolean;
-  onComplete: (body: { nodeId: string; note: string; focusTags: string[]; proofUrl?: string }) => void;
-  onGrowBranch: (nodeId: string, signals: string[]) => void;
-}) {
-  const [note, setNote] = useState('Finished a focused practice rep and logged what improved.');
-  const [tags, setTags] = useState('');
-  const [proofUrl, setProofUrl] = useState('');
-  const [signals, setSignals] = useState('');
-
-  const prerequisites = useMemo(
-    () => node.prerequisites.map((id) => tree.nodes.find((candidate) => candidate.id === id)?.title ?? id),
-    [node.prerequisites, tree.nodes],
-  );
-  const hiddenBranches = useMemo(
-    () =>
-      tree.nodes
-        .filter((candidate) => candidate.hidden && candidate.unlockCondition)
-        .filter((candidate) => candidate.branch === node.branch || candidate.prerequisites.includes(node.id))
-        .slice(0, 3),
-    [node.branch, node.id, tree.nodes],
-  );
-
-  return (
-    <div className="panel stack node-detail">
-      <div className="panel-title">
-        <Medal size={18} />
-        Node details
-      </div>
-      <span className={`status-pill ${node.status}`}>{node.status}</span>
-      <h2>{node.title}</h2>
-      <p>{node.description}</p>
-      <dl className="node-meta">
-        <div>
-          <dt>Difficulty</dt>
-          <dd>{node.difficulty}</dd>
-        </div>
-        <div>
-          <dt>Reward</dt>
-          <dd>{node.xp} XP</dd>
-        </div>
-        <div>
-          <dt>Estimate</dt>
-          <dd>{node.estimatedHours}h</dd>
-        </div>
-      </dl>
-      <div className="identity-grid">
-        {node.identity && (
-          <div>
-            <strong>Identity path</strong>
-            <p>{node.identity}</p>
-          </div>
-        )}
-        {node.tradeoff && (
-          <div>
-            <strong>Tradeoff</strong>
-            <p>{node.tradeoff}</p>
-          </div>
-        )}
-      </div>
-      <div>
-        <strong>Prerequisites</strong>
-        <p className="muted">{prerequisites.length ? prerequisites.join(', ') : 'None'}</p>
-      </div>
-      {node.unlockCondition && (
-        <div className="proof-box hidden-rule">
-          <strong>Hidden unlock logic</strong>
-          <p>{node.unlockCondition}</p>
-        </div>
-      )}
-      {hiddenBranches.length > 0 && (
-        <div className="proof-box hidden-rule">
-          <strong>Hidden future branches</strong>
-          {hiddenBranches.map((branch) => (
-            <p key={branch.id}>
-              {branch.title}: {branch.unlockCondition}
-            </p>
-          ))}
-        </div>
-      )}
-      {node.proof && (
-        <div className="proof-box">
-          <strong>Proof prompt</strong>
-          <p>{node.proof.prompt}</p>
-        </div>
-      )}
-      {node.tips && node.tips.length > 0 && (
-        <div className="proof-box tips-box">
-          <strong>Tips</strong>
-          <ul>
-            {node.tips.map((tip) => (
-              <li key={tip}>{tip}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="adapt-box">
-        <strong>Grow this branch</strong>
-        <p className="muted">Feed this node and your signals back into AI to add deeper child nodes.</p>
-        <input
-          value={signals}
-          placeholder="Optional: what happened, what you want next, or what style you prefer"
-          onChange={(event) => setSignals(event.target.value)}
-        />
-        <button
-          className="secondary-button"
-          disabled={disabled}
-          type="button"
-          onClick={() => onGrowBranch(node.id, signals.split(',').map((signal) => signal.trim()))}
-        >
-          Grow selected branch
-        </button>
-      </div>
-
-      {node.status === 'unlocked' && (
-        <form
-          className="stack"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onComplete({
-              nodeId: node.id,
-              note,
-              focusTags: tags.split(',').map((tag) => tag.trim()),
-              proofUrl: proofUrl || undefined,
-            });
-          }}
-        >
-          <label>
-            Journal entry
-            <textarea value={note} onChange={(event) => setNote(event.target.value)} />
-          </label>
-          <label>
-            Focus tags
-            <input
-              value={tags}
-              placeholder="Optional: what this proof focused on"
-              onChange={(event) => setTags(event.target.value)}
-            />
-          </label>
-          <label>
-            Proof URL
-            <input placeholder="https://..." value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} />
-          </label>
-          <button className="primary-button" disabled={disabled} type="submit">
-            Complete node
-          </button>
-        </form>
-      )}
-
-      {tree.achievements.length > 0 && (
-        <div className="achievement-list">
-          <strong>Achievements</strong>
-          {tree.achievements.map((achievement) => (
-            <span key={achievement.id}>{achievement.title}</span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

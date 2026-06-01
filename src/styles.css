@@ -224,7 +224,7 @@ textarea:focus {
 
 .layout-grid {
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr) 360px;
+  grid-template-columns: 330px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -350,10 +350,6 @@ textarea:focus {
 .skill-node.complete {
   border-color: rgba(167, 243, 208, 0.72);
   background: linear-gradient(180deg, rgba(11, 69, 58, 0.92), rgba(9, 38, 45, 0.94));
-}
-
-.skill-node[aria-disabled='true'] {
-  cursor: pointer;
 }
 
 .skill-node.locked {
@@ -501,4 +497,62 @@ textarea:focus {
   .hero {
     flex-direction: column;
   }
+}
+
+.tree-hint {
+  margin: 0.65rem 0 0;
+  color: #8fa3bd;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.quest-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.quest-modal {
+  width: min(560px, 100%);
+  max-height: min(88vh, 900px);
+  overflow: auto;
+}
+
+.quest-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.quest-modal-close {
+  padding: 0.45rem;
+}
+
+.quest-modal-form {
+  margin-top: 0.25rem;
+}
+
+.quest-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.quest-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #c7d5e8;
+  font-size: 0.88rem;
+}
+
+.quest-checkbox input {
+  width: auto;
 }

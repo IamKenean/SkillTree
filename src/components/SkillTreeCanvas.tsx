@@ -16,6 +16,7 @@ type SkillTreeCanvasProps = {
   tree: SkillTree;
   selectedNodeId?: string;
   onSelectNode: (node: SkillNode) => void;
+  onOpenNode: (node: SkillNode) => void;
 };
 
 type SkillNodeData = {
@@ -54,7 +55,7 @@ const nodeTypes = {
   skill: SkillNodeCard,
 };
 
-export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTreeCanvasProps) {
+export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode, onOpenNode }: SkillTreeCanvasProps) {
   const nodes = useMemo<Node<SkillNodeData>[]>(
     () =>
       tree.nodes
@@ -97,10 +98,12 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTre
         nodesConnectable={false}
         elementsSelectable
         onNodeClick={(_, node) => onSelectNode(node.data.skill)}
+        onNodeDoubleClick={(_, node) => onOpenNode(node.data.skill)}
       >
         <Background color="#284164" gap={28} />
         <Controls />
       </ReactFlow>
+      <p className="tree-hint">Click to highlight a node. Double-click to open the quest menu.</p>
     </div>
   );
 }

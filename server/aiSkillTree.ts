@@ -437,7 +437,7 @@ ${JSON.stringify(existingNodes, null, 2)}
 Return only valid JSON matching:
 {
   "nodes": [
-    {"id": "new_child_id", "title": "...", "description": "...", "children": ["new_grandchild_a", "new_grandchild_b"], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "proofPrompt": "...", "tips": ["...", "..."], "hidden": false, "unlockCondition": "..."}
+    {"id": "new_child_id", "title": "...", "description": "...", "children": ["new_grandchild_a", "new_grandchild_b"], "difficulty": "apprentice|adept|expert|legendary", "branch": "...", "identity": "...", "tradeoff": "...", "xp": 90, "estimatedHours": 2, "proofPrompt": "...", "tips": ["...", "..."], "hidden": false, "unlockCondition": "..."}
   ]
 }
 
@@ -455,6 +455,7 @@ Rules:
 - Omit unlockCondition entirely on visible nodes; never set it to null.
 - Keep every proofPrompt at or under 180 characters.
 - Include 2 to 4 practical tips per node.
+- Include an integer xp value between 25 and 600 on every node. Use starter 50, apprentice 90, adept 140, expert 220, legendary 420 unless a custom value fits better.
 - Do not duplicate existing node titles or ids.`;
 }
 
@@ -591,6 +592,7 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
           branch,
           identity: `${selected.identity ?? selected.branch} Specialist`,
           tradeoff: 'Small consistent action vs waiting for confidence',
+          xp: 90,
           proofPrompt: 'Complete one low-stakes real rep and write what happened.',
         },
         {
@@ -602,6 +604,7 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
           branch,
           identity: 'Capability Builder',
           tradeoff: 'More challenge vs clean execution',
+          xp: 140,
           proofPrompt: 'Repeat the rep with one deliberate upgrade.',
         },
         {
@@ -613,6 +616,7 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
           branch,
           identity: 'Applied Performer',
           tradeoff: 'Real stakes vs perfect preparation',
+          xp: 220,
           proofPrompt: 'Log one real-world attempt and the outcome.',
         },
         {
@@ -624,6 +628,7 @@ function expandBranchWithFallback(tree: SkillTree, nodeId: string, signals: stri
           branch,
           identity: 'Signature Specialist',
           tradeoff: 'Specialization vs adaptability',
+          xp: 420,
           proofPrompt: 'Show repeated proof and name the next signature-level challenge.',
           hidden: true,
           unlockCondition: `Unlock after repeated ${focus} proof on ${selected.title}.`,
