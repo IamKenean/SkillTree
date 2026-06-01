@@ -46,9 +46,27 @@ function clampRequiredField(value: unknown, min: number, max: number): unknown {
   return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
 }
 
+function defaultProofPrompt(node: Record<string, unknown>): string {
+  const title = typeof node.title === 'string' && node.title.trim() ? node.title.trim() : 'this skill';
+  return `Complete one practice rep for ${title} and log what improved.`.slice(0, 180);
+}
+
+function normalizeAiId(value: unknown, fallback: string): string {
+  const raw = typeof value === 'string' && value.trim() ? value.trim() : fallback;
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/(^_+|_+$)/g, '')
+    .slice(0, 48);
+  if (slug.length >= 2) return slug;
+  return `${fallback}_${Math.abs(raw.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 9999}`.slice(0, 48);
+}
+
 function sanitizeAiNode(node: Record<string, unknown>): Record<string, unknown> {
   const next = { ...node };
-  if ('proofPrompt' in next) next.proofPrompt = clampRequiredField(next.proofPrompt, 8, 180);
+  const proofPrompt = clampRequiredField(next.proofPrompt, 8, 180);
+  next.proofPrompt =
+    typeof proofPrompt === 'string' && proofPrompt.length >= 8 ? proofPrompt : defaultProofPrompt(next);
   if ('description' in next) next.description = clampRequiredField(next.description, 12, 360);
   if ('title' in next) next.title = clampRequiredField(next.title, 3, 80);
   if ('identity' in next) next.identity = clampRequiredField(next.identity, 3, 80);
@@ -73,19 +91,67 @@ function sanitizeAiNode(node: Record<string, unknown>): Record<string, unknown> 
   return next;
 }
 
+function buildAiIdMap(items: Record<string, unknown>[]): Map<string, string> {
+  const idMap = new Map<string, string>();
+  const used = new Set<string>();
+
+  items.forEach((item, index) => {
+    const rawId = typeof item.id === 'string' ? item.id : `node_${index + 1}`;
+    let candidate = normalizeAiId(rawId, `node_${index + 1}`);
+    let suffix = 2;
+    while (used.has(candidate)) {
+      candidate = `${candidate.slice(0, 44)}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    idMap.set(rawId, candidate);
+  });
+
+  return idMap;
+}
+
+function applyAiIdMap(node: Record<string, unknown>, idMap: Map<string, string>, index: number): Record<string, unknown> {
+  const rawId = typeof node.id === 'string' ? node.id : `node_${index + 1}`;
+  const children = Array.isArray(node.children)
+    ? node.children
+        .filter((child): child is string => typeof child === 'string')
+        .map((child) => idMap.get(child) ?? normalizeAiId(child, 'child'))
+    : [];
+
+  return {
+    ...node,
+    id: idMap.get(rawId) ?? normalizeAiId(rawId, `node_${index + 1}`),
+    children,
+  };
+}
+
 function sanitizeAiPayload(payload: unknown): unknown {
   if (!payload || typeof payload !== 'object') return payload;
   const record = payload as Record<string, unknown>;
   const next: Record<string, unknown> = { ...record };
 
-  if (record.root && typeof record.root === 'object') {
-    next.root = sanitizeAiNode(record.root as Record<string, unknown>);
+  const rawNodes = Array.isArray(record.nodes)
+    ? record.nodes.filter((node): node is Record<string, unknown> => !!node && typeof node === 'object')
+    : [];
+  const rawRoot = record.root && typeof record.root === 'object' ? (record.root as Record<string, unknown>) : null;
+  const idSources = rawRoot ? [rawRoot, ...rawNodes] : rawNodes;
+  const idMap = buildAiIdMap(idSources);
+
+  if (rawNodes.length) {
+    next.nodes = rawNodes.map((node, index) => sanitizeAiNode(applyAiIdMap(node, idMap, index + (rawRoot ? 1 : 0))));
   }
 
-  if (Array.isArray(record.nodes)) {
-    next.nodes = record.nodes
-      .filter((node): node is Record<string, unknown> => !!node && typeof node === 'object')
-      .map((node) => sanitizeAiNode(node));
+  if (rawRoot) {
+    const rootChildren = Array.isArray(rawRoot.children)
+      ? rawRoot.children
+          .filter((child): child is string => typeof child === 'string')
+          .map((child) => idMap.get(child) ?? normalizeAiId(child, 'child'))
+          .slice(0, 8)
+      : [];
+    next.root = sanitizeAiNode({
+      ...applyAiIdMap(rawRoot, idMap, 0),
+      children: rootChildren,
+    });
   }
 
   return next;

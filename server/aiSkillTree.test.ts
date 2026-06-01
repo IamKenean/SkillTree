@@ -228,6 +228,51 @@ describe('Gemini skill tree conversion', () => {
   });
 
 
+
+  it('normalizes overlong ids and missing proof prompts during branch expansion', () => {
+    const tree = generateSkillTree({
+      title: 'Build boxing knockout power',
+      experienceLevel: 'Beginner',
+      weeklyHours: 4,
+      interests: 'boxing, power, footwork',
+    });
+    const selected = tree.nodes[0];
+    const longId = 'explosive_power_chain_progression_drill_pathway_level_two';
+
+    const expanded = expandSkillTreeFromAiBranch(
+      tree,
+      selected.id,
+      JSON.stringify({
+        nodes: [
+          {
+            id: 'first_rep',
+            title: 'First Power Rep',
+            description: 'Practice the smallest real version of explosive punching mechanics.',
+            children: [longId],
+            difficulty: 'apprentice',
+            branch: 'power-growth',
+            identity: 'Power Builder',
+            tradeoff: 'Speed vs technique',
+            proofPrompt: 'Throw 20 focused power shots and log what improved.',
+          },
+          {
+            id: longId,
+            title: 'Chain Power Transfer',
+            description: 'Link hip rotation, foot pivot, and shoulder whip into one knockout line.',
+            children: [],
+            difficulty: 'adept',
+            branch: 'power-growth',
+            identity: 'Chain Striker',
+            tradeoff: 'Power vs balance',
+          },
+        ],
+      }),
+    );
+
+    expect(expanded.nodes.some((node) => node.title === 'Chain Power Transfer')).toBe(true);
+    expect(expanded.nodes.find((node) => node.title === 'Chain Power Transfer')?.proof?.prompt.length).toBeGreaterThanOrEqual(8);
+  });
+
   it('accepts null unlockCondition and truncates long branch expansion proof prompts', () => {
     const tree = generateSkillTree({
       title: 'I want to improve at photography',
