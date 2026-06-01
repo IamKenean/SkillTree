@@ -62,4 +62,43 @@ describe('Ascend API', () => {
 
     expect(adapted.body.nodes.map((node: { title: string }) => node.title)).toContain('Muscle up pathway');
   });
+
+  it('surfaces Gemini errors when GEMINI_API_KEY is configured', async () => {
+    const originalKey = process.env.GEMINI_API_KEY;
+    const originalFetch = globalThis.fetch;
+    process.env.GEMINI_API_KEY = 'test-key';
+
+    globalThis.fetch = (async () => {
+      return new Response('bad key', { status: 401 });
+    }) as typeof fetch;
+
+    try {
+      const app = createApp({
+        store: new JsonStore(join(tempDir, 'db.json')),
+        jwtSecret: 'test-secret',
+      });
+
+      const signup = await request(app)
+        .post('/api/auth/signup')
+        .send({ username: 'tester2', password: 'password123', avatar: 'T' })
+        .expect(201);
+      const token = signup.body.token as string;
+
+      const goal = await request(app)
+        .post('/api/goals')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          title: 'Learn React',
+          experienceLevel: 'Beginner',
+          weeklyHours: 5,
+          interests: 'react, ui',
+        })
+        .expect(400);
+
+      expect(String(goal.body.error)).toMatch(/Gemini request failed/i);
+    } finally {
+      process.env.GEMINI_API_KEY = originalKey;
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
