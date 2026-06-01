@@ -6,7 +6,8 @@ Ascend is a full-stack adaptive skill tree MVP for personal growth. Users create
 
 - JWT authentication with bcrypt password hashing.
 - Goal creation with experience level, weekly time, and focus interests.
-- AI-style deterministic skill tree generation with XP rewards, prerequisites, proof prompts, hidden future nodes, and rarity tiers.
+- Optional Gemini-powered skill tree generation with deterministic nonlinear blueprints as a fallback.
+- XP rewards, prerequisites, proof prompts, hidden future nodes, and rarity tiers.
 - React Flow skill graph with zoom, pan, locked/unlocked/complete states, node detail panels, and dashboard metrics.
 - Progress tracking with journal entries, proof URLs, focus tags, streaks, levels, achievements, and adaptive specialization branches.
 - Express API with JSON persistence for local development and production demo deployments.
@@ -14,7 +15,7 @@ Ascend is a full-stack adaptive skill tree MVP for personal growth. Users create
 ## Tech Stack
 
 - React 19, TypeScript, Vite, React Flow.
-- Express 5, Zod, JWT, bcryptjs.
+- Express 5, Zod, JWT, bcryptjs, Google Gemini SDK.
 - Vitest, Testing Library, Supertest.
 
 ## Getting Started
@@ -25,6 +26,10 @@ npm run dev
 ```
 
 The web app runs on `http://localhost:5173` and proxies API calls to `http://localhost:4173`.
+
+To enable live Gemini generation, set `GEMINI_API_KEY` before starting the API. If it is missing or Gemini returns invalid JSON, Ascend falls back to the local blueprint generator.
+
+The Gemini prompt includes a full photography JSON example and requires every `children` id to have a matching node object. Users can also grow a selected branch later with `POST /api/goals/:goalId/expand`, which sends the selected node, current tree context, and behavior signals back to AI to append deeper child and grandchild nodes.
 
 For a production build:
 
@@ -41,4 +46,4 @@ NODE_ENV=production npm start
 
 ## Local Data
 
-The API stores local development data in `data/ascend.json`. Set `ASCEND_DB_PATH` to use another path and `JWT_SECRET` for a production-grade signing secret.
+The API stores local development data in `data/ascend.json`. Set `ASCEND_DB_PATH` to use another path, `JWT_SECRET` for a production-grade signing secret, `GEMINI_API_KEY` for live AI generation, and optionally `GEMINI_MODEL` to override the default `gemini-2.5-flash`.

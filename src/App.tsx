@@ -9,10 +9,11 @@ import {
   ShieldCheck,
   Trophy,
 } from 'lucide-react';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { api, loadSession, saveSession, type Session } from './api.js';
+import { NodeQuestModal } from './components/NodeQuestModal.js';
 import { SkillTreeCanvas } from './components/SkillTreeCanvas.js';
-import type { DashboardPayload, GoalInput, SkillTree } from './shared/types.js';
+import type { DashboardPayload, GoalInput, SkillNode, SkillTree } from './shared/types.js';
 
 const starterGoal: GoalInput = {
   title: 'I want to get stronger with calisthenics',
@@ -21,18 +22,25 @@ const starterGoal: GoalInput = {
   interests: 'pushups, dips, pullups, handstands',
 };
 
+const blankGoal: GoalInput = {
+  title: '',
+  experienceLevel: 'Beginner',
+  weeklyHours: 4,
+  interests: '',
+};
+
 function App() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
-  const [expandedNodeId, setExpandedNodeId] = useState<string | undefined>();
-  const [completingNodeId, setCompletingNodeId] = useState<string | undefined>();
-  const [xpBurst, setXpBurst] = useState<number | undefined>();
+  const [questNodeId, setQuestNodeId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
   const activeGoal = dashboard?.goals.find((goal) => goal.id === activeGoalId) ?? dashboard?.goals[0] ?? null;
+  const selectedNode = activeGoal?.nodes.find((node) => node.id === selectedNodeId) ?? activeGoal?.nodes[0] ?? null;
+  const questNode = activeGoal?.nodes.find((node) => node.id === questNodeId) ?? null;
 
   useEffect(() => {
     if (!session) return;
@@ -101,7 +109,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" style={activeGoal?.palette ? getTreePaletteStyle(activeGoal) : undefined}>
       <header className="hero">
         <div>
           <p className="eyebrow">Ascend adaptive skill tree</p>
@@ -139,7 +147,6 @@ function App() {
             onSelect={(goal) => {
               setActiveGoalId(goal.id);
               setSelectedNodeId(goal.nodes[0]?.id);
-              setExpandedNodeId(undefined);
             }}
           />
         </aside>
@@ -150,37 +157,12 @@ function App() {
               <DashboardStats tree={activeGoal} />
               <SkillTreeCanvas
                 tree={activeGoal}
-                selectedNodeId={selectedNodeId}
-                expandedNodeId={expandedNodeId}
-                completingNodeId={completingNodeId}
-                xpBurst={xpBurst}
-                disabled={isBusy}
+                selectedNodeId={selectedNode?.id}
                 onSelectNode={(node) => setSelectedNodeId(node.id)}
-                onExpandNode={(node) => {
+                onOpenNode={(node) => {
                   setSelectedNodeId(node.id);
-                  setExpandedNodeId(node.id);
+                  setQuestNodeId(node.id);
                 }}
-                onClosePopover={() => setExpandedNodeId(undefined)}
-                onComplete={(body) =>
-                  runAction(async () => {
-                    const node = activeGoal.nodes.find((candidate) => candidate.id === body.nodeId);
-                    setCompletingNodeId(body.nodeId);
-                    setXpBurst(node?.xp);
-                    try {
-                      const tree = await api.completeNode(session.token, activeGoal.id, body);
-                      applyTree(tree, body.nodeId);
-                      window.setTimeout(() => {
-                        setCompletingNodeId(undefined);
-                        setExpandedNodeId(undefined);
-                      }, 900);
-                    } catch (completionError) {
-                      setCompletingNodeId(undefined);
-                      setXpBurst(undefined);
-                      throw completionError;
-                    }
-                  })
-                }
-                onXpBurstDone={() => setXpBurst(undefined)}
               />
             </>
           ) : (
@@ -195,6 +177,36 @@ function App() {
           )}
         </section>
       </section>
+
+      {activeGoal && questNode && (
+        <NodeQuestModal
+          tree={activeGoal}
+          node={questNode}
+          disabled={isBusy}
+          onClose={() => setQuestNodeId(null)}
+          onFinish={async ({ nodeId, note, focusTags, proofUrl, growBranch, signals }) => {
+            await runAction(async () => {
+              let tree = activeGoal;
+              if (questNode.status === 'unlocked') {
+                tree = await api.completeNode(session.token, activeGoal.id, {
+                  nodeId,
+                  note,
+                  focusTags,
+                  proofUrl,
+                });
+                applyTree(tree);
+              }
+
+              if (growBranch) {
+                const previousIds = new Set(tree.nodes.map((candidate) => candidate.id));
+                tree = await api.expandGoal(session.token, activeGoal.id, nodeId, signals);
+                const newNode = tree.nodes.find((candidate) => !previousIds.has(candidate.id));
+                applyTree(tree, newNode?.id);
+              }
+            });
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -275,40 +287,52 @@ function AuthScreen({
 }
 
 function GoalCreator({ onCreate, disabled }: { onCreate: (input: GoalInput) => void; disabled: boolean }) {
-  const [title, setTitle] = useState(starterGoal.title);
-  const [experienceLevel, setExperienceLevel] = useState(starterGoal.experienceLevel);
+  const [input, setInput] = useState<GoalInput>(blankGoal);
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    onCreate({
-      title,
-      experienceLevel,
-      weeklyHours: 5,
-      interests: title,
-    });
+    onCreate(input);
   }
 
   return (
-    <form className="panel stack goal-creator" onSubmit={submit}>
+    <form className="panel stack" onSubmit={submit}>
       <div className="panel-title">
         <BrainCircuit size={18} />
-        New quest path
+        Generate tree
       </div>
       <label>
-        Goal
-        <input
-          placeholder="What do you want to learn?"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+        Main goal
+        <textarea
+          required
+          value={input.title}
+          placeholder="Describe anything you want to grow into: start a garden, gain social skills, ask someone out, work out, learn chess, become your best self..."
+          onChange={(event) => setInput({ ...input, title: event.target.value })}
         />
       </label>
       <label>
-        Level
-        <select value={experienceLevel} onChange={(event) => setExperienceLevel(event.target.value)}>
-          <option>Beginner</option>
-          <option>Intermediate</option>
-          <option>Advanced</option>
-        </select>
+        Experience level
+        <input
+          value={input.experienceLevel}
+          onChange={(event) => setInput({ ...input, experienceLevel: event.target.value })}
+        />
+      </label>
+      <label>
+        Hours per week
+        <input
+          type="number"
+          min={1}
+          max={80}
+          value={input.weeklyHours}
+          onChange={(event) => setInput({ ...input, weeklyHours: Number(event.target.value) })}
+        />
+      </label>
+      <label>
+        Optional context
+        <input
+          value={input.interests}
+          placeholder="Optional: constraints, style, fears, interests, or examples"
+          onChange={(event) => setInput({ ...input, interests: event.target.value })}
+        />
       </label>
       <button className="primary-button" disabled={disabled} type="submit">
         <Plus size={16} /> Generate
@@ -365,6 +389,7 @@ function DashboardStats({ tree }: { tree: SkillTree }) {
       <Metric icon={<Trophy />} label="XP" value={`${tree.totalXp}/${nextLevelXp}`} />
       <Metric icon={<Flame />} label="Streak" value={tree.streak} />
       <Metric icon={<ShieldCheck />} label="Unlocked" value={unlocked} />
+      <Metric icon={<BrainCircuit />} label="Palette" value={tree.palette?.name ?? 'Ascend'} />
       <div className="progress-card">
         <span>Next level</span>
         <div className="progress-track">
@@ -399,6 +424,19 @@ function EmptyState({ onUseStarter }: { onUseStarter: () => void }) {
       </button>
     </div>
   );
+}
+
+function getTreePaletteStyle(tree: SkillTree): CSSProperties {
+  const palette = tree.palette;
+  if (!palette) return {};
+  return {
+    '--tree-primary': palette.primary,
+    '--tree-secondary': palette.secondary,
+    '--tree-accent': palette.accent,
+    '--tree-background': palette.background,
+    '--tree-surface': palette.surface,
+    '--tree-text': palette.text,
+  } as CSSProperties;
 }
 
 export default App;

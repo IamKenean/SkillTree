@@ -4,48 +4,56 @@ import {
   Handle,
   Position,
   ReactFlow,
+  useNodesState,
   type Edge,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
 import { Lock, Sparkles, Star } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { SkillNode, SkillTree } from '../shared/types.js';
-import { NodePopover } from './NodePopover.js';
-import { XpFloat } from './XpFloat.js';
 
 type SkillTreeCanvasProps = {
   tree: SkillTree;
   selectedNodeId?: string;
-  expandedNodeId?: string;
-  completingNodeId?: string;
-  xpBurst?: number;
-  disabled?: boolean;
   onSelectNode: (node: SkillNode) => void;
-  onExpandNode: (node: SkillNode) => void;
-  onClosePopover: () => void;
-  onComplete: (body: { nodeId: string; note: string; focusTags: string[]; proofUrl?: string }) => void;
-  onXpBurstDone: () => void;
+  onOpenNode: (node: SkillNode) => void;
 };
 
 type SkillNodeData = {
   skill: SkillNode;
-  isCompleting: boolean;
+  onSelect: (node: SkillNode) => void;
+  onOpen: (node: SkillNode) => void;
 };
 
-function SkillNodeCard({ data }: NodeProps<Node<SkillNodeData>>) {
-  const { skill, isCompleting } = data;
+function SkillNodeCard({ data, selected }: NodeProps<Node<SkillNodeData>>) {
+  const { skill, onSelect, onOpen } = data;
   const isLocked = skill.status === 'locked';
   const isComplete = skill.status === 'complete';
 
   return (
-    <button
-      className={`skill-node ${skill.status} ${skill.rarity}${isCompleting ? ' completing' : ''}`}
-      type="button"
-      disabled={isLocked}
+    <div
+      className={`skill-node nodrag nopan ${skill.status} ${skill.rarity}${selected ? ' selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-disabled={isLocked}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(skill);
+      }}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onOpen(skill);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(skill);
+        }
+      }}
     >
       <Handle type="target" position={Position.Left} />
-      <div className="node-glow" />
+      <div className="node-glow" aria-hidden="true" />
       <div className="node-topline">
         <span>{skill.branch}</span>
         <strong>{skill.xp} XP</strong>
@@ -56,7 +64,7 @@ function SkillNodeCard({ data }: NodeProps<Node<SkillNodeData>>) {
       <h3>{skill.title}</h3>
       <p>{skill.difficulty}</p>
       <Handle type="source" position={Position.Right} />
-    </button>
+    </div>
   );
 }
 
@@ -64,37 +72,34 @@ const nodeTypes = {
   skill: SkillNodeCard,
 };
 
-export function SkillTreeCanvas({
-  tree,
-  selectedNodeId,
-  expandedNodeId,
-  completingNodeId,
-  xpBurst,
-  disabled,
-  onSelectNode,
-  onExpandNode,
-  onClosePopover,
-  onComplete,
-  onXpBurstDone,
-}: SkillTreeCanvasProps) {
-  const expandedNode = expandedNodeId ? tree.nodes.find((node) => node.id === expandedNodeId) : undefined;
-
-  const nodes = useMemo<Node<SkillNodeData>[]>(
+export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode, onOpenNode }: SkillTreeCanvasProps) {
+  const graphNodes = useMemo(
     () =>
       tree.nodes
         .filter((skill) => !skill.hidden || skill.status !== 'locked')
         .map((skill) => ({
           id: skill.id,
-          type: 'skill',
+          type: 'skill' as const,
           position: skill.position,
-          data: { skill, isCompleting: skill.id === completingNodeId },
+          data: {
+            skill,
+            onSelect: onSelectNode,
+            onOpen: onOpenNode,
+          },
           selected: skill.id === selectedNodeId,
           draggable: false,
+          selectable: true,
         })),
-    [completingNodeId, selectedNodeId, tree.nodes],
+    [onOpenNode, onSelectNode, selectedNodeId, tree.nodes],
   );
 
-  const visible = new Set(nodes.map((node) => node.id));
+  const [nodes, setNodes, onNodesChange] = useNodesState(graphNodes);
+
+  useEffect(() => {
+    setNodes(graphNodes);
+  }, [graphNodes, setNodes]);
+
+  const visible = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
   const edges = useMemo<Edge[]>(
     () =>
       tree.edges
@@ -109,33 +114,30 @@ export function SkillTreeCanvas({
 
   return (
     <div className="tree-shell">
-      <p className="tree-hint">Double-click a node to open details</p>
       <ReactFlow
-        key={`${tree.id}-${tree.nodes.length}-${tree.updatedAt}`}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.25}
         maxZoom={1.5}
-        onNodeClick={(_, node) => onSelectNode(node.data.skill)}
-        onNodeDoubleClick={(_, node) => onExpandNode(node.data.skill)}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
+        panOnDrag={[1, 2]}
+        panOnScroll
+        zoomOnScroll
+        zoomOnDoubleClick={false}
+        selectNodesOnDrag={false}
+        noDragClassName="nodrag"
+        noPanClassName="nopan"
       >
         <Background color="#284164" gap={28} />
         <Controls />
       </ReactFlow>
-
-      {expandedNode && (
-        <NodePopover
-          tree={tree}
-          node={expandedNode}
-          disabled={!!disabled}
-          onClose={onClosePopover}
-          onComplete={onComplete}
-        />
-      )}
-
-      {xpBurst !== undefined && <XpFloat xp={xpBurst} onDone={onXpBurstDone} />}
+      <p className="tree-hint">Click a node to select it. Double-click (or press Enter) to open the quest menu.</p>
     </div>
   );
 }

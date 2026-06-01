@@ -8,8 +8,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { adaptSkillTree, completeNode, generateSkillTree, parseInterests } from '../src/shared/skillTree.js';
+import { adaptSkillTree, completeNode } from '../src/shared/skillTree.js';
 import type { DashboardPayload, GoalSummary, PublicUser, SkillTree } from '../src/shared/types.js';
+import { createBranchExpander, createSkillTreeGenerator, type BranchExpander, type TreeGenerator } from './aiSkillTree.js';
 import { JsonStore, type UserRecord } from './dataStore.js';
 
 const authSchema = z.object({
@@ -36,6 +37,11 @@ const adaptSchema = z.object({
   signals: z.array(z.string().trim().min(1).max(80)).min(1),
 });
 
+const expandSchema = z.object({
+  nodeId: z.string(),
+  signals: z.array(z.string().trim().min(1).max(80)).default([]),
+});
+
 type AuthenticatedRequest = Request & {
   user?: PublicUser;
 };
@@ -44,6 +50,8 @@ export type AppOptions = {
   store: JsonStore;
   jwtSecret?: string;
   serveStatic?: boolean;
+  treeGenerator?: TreeGenerator;
+  branchExpander?: BranchExpander;
 };
 
 function signToken(user: PublicUser, jwtSecret: string): string {
@@ -72,7 +80,13 @@ function summarize(goal: SkillTree): GoalSummary {
   };
 }
 
-export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-secret', serveStatic = false }: AppOptions) {
+export function createApp({
+  store,
+  jwtSecret = process.env.JWT_SECRET ?? 'dev-secret',
+  serveStatic = false,
+  treeGenerator = createSkillTreeGenerator(),
+  branchExpander = createBranchExpander(),
+}: AppOptions) {
   const app = express();
 
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -163,7 +177,7 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
   app.post('/api/goals', requireAuth, async (req: AuthenticatedRequest, res, next) => {
     try {
       const input = goalSchema.parse(req.body);
-      const tree = generateSkillTree({ ...input, interests: parseInterests(input.interests).join(', ') });
+      const tree = await treeGenerator(input);
       await store.update((data) => {
         data.goals[req.user!.id] = [tree, ...(data.goals[req.user!.id] ?? [])];
       });
@@ -189,6 +203,18 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
     try {
       const input = adaptSchema.parse(req.body);
       const tree = await updateGoal(store, req.user!.id, String(req.params.goalId), (goal) => adaptSkillTree(goal, input.signals));
+      res.json(tree);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/goals/:goalId/expand', requireAuth, async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const input = expandSchema.parse(req.body);
+      const tree = await updateGoal(store, req.user!.id, String(req.params.goalId), (goal) =>
+        branchExpander(goal, input.nodeId, input.signals),
+      );
       res.json(tree);
     } catch (error) {
       next(error);
@@ -222,15 +248,15 @@ async function updateGoal(
   store: JsonStore,
   userId: string,
   goalId: string,
-  updater: (goal: SkillTree) => SkillTree,
+  updater: (goal: SkillTree) => SkillTree | Promise<SkillTree>,
 ): Promise<SkillTree> {
-  return store.update((data) => {
+  return store.update(async (data) => {
     const goals = data.goals[userId] ?? [];
     const index = goals.findIndex((goal) => goal.id === goalId);
     if (index === -1) {
       throw new Error('Goal not found.');
     }
-    const updated = updater(goals[index]);
+    const updated = await updater(goals[index]);
     goals[index] = updated;
     data.goals[userId] = goals;
     return updated;

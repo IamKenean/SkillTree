@@ -7,6 +7,16 @@ export type ProofRequirement = {
   prompt: string;
 };
 
+export type TreePalette = {
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+};
+
 export type SkillNode = {
   id: string;
   title: string;
@@ -16,7 +26,11 @@ export type SkillNode = {
   estimatedHours: number;
   prerequisites: string[];
   proof?: ProofRequirement;
+  tips?: string[];
   branch: string;
+  identity?: string;
+  tradeoff?: string;
+  unlockCondition?: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   hidden?: boolean;
   status: SkillNodeStatus;
@@ -58,6 +72,8 @@ export type GoalInput = {
 
 export type SkillTree = {
   id: string;
+  generationSource?: 'blueprint' | 'gemini';
+  palette?: TreePalette;
   rootGoal: string;
   experienceLevel: string;
   weeklyHours: number;
