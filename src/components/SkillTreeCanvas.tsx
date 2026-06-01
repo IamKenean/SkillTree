@@ -4,12 +4,13 @@ import {
   Handle,
   Position,
   ReactFlow,
+  useNodesState,
   type Edge,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
 import { Lock, Sparkles, Star } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { SkillNode, SkillTree } from '../shared/types.js';
 
 type SkillTreeCanvasProps = {
@@ -21,22 +22,38 @@ type SkillTreeCanvasProps = {
 
 type SkillNodeData = {
   skill: SkillNode;
+  onSelect: (node: SkillNode) => void;
+  onOpen: (node: SkillNode) => void;
 };
 
 function SkillNodeCard({ data, selected }: NodeProps<Node<SkillNodeData>>) {
-  const { skill } = data;
+  const { skill, onSelect, onOpen } = data;
   const isLocked = skill.status === 'locked';
   const isComplete = skill.status === 'complete';
 
   return (
     <div
-      className={`skill-node ${skill.status} ${skill.rarity}${selected ? ' selected' : ''}`}
+      className={`skill-node nodrag nopan ${skill.status} ${skill.rarity}${selected ? ' selected' : ''}`}
       role="button"
       tabIndex={0}
       aria-disabled={isLocked}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(skill);
+      }}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onOpen(skill);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen(skill);
+        }
+      }}
     >
       <Handle type="target" position={Position.Left} />
-      <div className="node-glow" />
+      <div className="node-glow" aria-hidden="true" />
       <div className="node-topline">
         <span>{skill.branch}</span>
         <strong>{skill.xp} XP</strong>
@@ -56,22 +73,33 @@ const nodeTypes = {
 };
 
 export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode, onOpenNode }: SkillTreeCanvasProps) {
-  const nodes = useMemo<Node<SkillNodeData>[]>(
+  const graphNodes = useMemo(
     () =>
       tree.nodes
         .filter((skill) => !skill.hidden || skill.status !== 'locked')
         .map((skill) => ({
           id: skill.id,
-          type: 'skill',
+          type: 'skill' as const,
           position: skill.position,
-          data: { skill },
+          data: {
+            skill,
+            onSelect: onSelectNode,
+            onOpen: onOpenNode,
+          },
           selected: skill.id === selectedNodeId,
           draggable: false,
+          selectable: true,
         })),
-    [selectedNodeId, tree.nodes],
+    [onOpenNode, onSelectNode, selectedNodeId, tree.nodes],
   );
 
-  const visible = new Set(nodes.map((node) => node.id));
+  const [nodes, setNodes, onNodesChange] = useNodesState(graphNodes);
+
+  useEffect(() => {
+    setNodes(graphNodes);
+  }, [graphNodes, setNodes]);
+
+  const visible = useMemo(() => new Set(nodes.map((node) => node.id)), [nodes]);
   const edges = useMemo<Edge[]>(
     () =>
       tree.edges
@@ -87,23 +115,29 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode, onOpenNode
   return (
     <div className="tree-shell">
       <ReactFlow
-        key={`${tree.id}-${tree.nodes.length}-${tree.updatedAt}`}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.25}
         maxZoom={1.5}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable
-        onNodeClick={(_, node) => onSelectNode(node.data.skill)}
-        onNodeDoubleClick={(_, node) => onOpenNode(node.data.skill)}
+        panOnDrag={[1, 2]}
+        panOnScroll
+        zoomOnScroll
+        zoomOnDoubleClick={false}
+        selectNodesOnDrag={false}
+        noDragClassName="nodrag"
+        noPanClassName="nopan"
       >
         <Background color="#284164" gap={28} />
         <Controls />
       </ReactFlow>
-      <p className="tree-hint">Click to highlight a node. Double-click to open the quest menu.</p>
+      <p className="tree-hint">Click a node to select it. Double-click (or press Enter) to open the quest menu.</p>
     </div>
   );
 }
