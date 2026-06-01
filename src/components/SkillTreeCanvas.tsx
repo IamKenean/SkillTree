@@ -22,13 +22,18 @@ type SkillNodeData = {
   skill: SkillNode;
 };
 
-function SkillNodeCard({ data }: NodeProps<Node<SkillNodeData>>) {
+function SkillNodeCard({ data, selected }: NodeProps<Node<SkillNodeData>>) {
   const { skill } = data;
   const isLocked = skill.status === 'locked';
   const isComplete = skill.status === 'complete';
 
   return (
-    <button className={`skill-node ${skill.status} ${skill.rarity}`} type="button" disabled={isLocked}>
+    <div
+      className={`skill-node ${skill.status} ${skill.rarity}${selected ? ' selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-disabled={isLocked}
+    >
       <Handle type="target" position={Position.Left} />
       <div className="node-glow" />
       <div className="node-topline">
@@ -41,7 +46,7 @@ function SkillNodeCard({ data }: NodeProps<Node<SkillNodeData>>) {
       <h3>{skill.title}</h3>
       <p>{skill.difficulty}</p>
       <Handle type="source" position={Position.Right} />
-    </button>
+    </div>
   );
 }
 
@@ -88,6 +93,9 @@ export function SkillTreeCanvas({ tree, selectedNodeId, onSelectNode }: SkillTre
         fitView
         minZoom={0.25}
         maxZoom={1.5}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
         onNodeClick={(_, node) => onSelectNode(node.data.skill)}
       >
         <Background color="#284164" gap={28} />
