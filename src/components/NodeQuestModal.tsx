@@ -68,132 +68,108 @@ export function NodeQuestModal({ tree, node, disabled, onClose, onFinish }: Node
   }
 
   return (
-    <div className="quest-modal-backdrop" onClick={onClose} role="presentation">
+    <div className="quest-popover-layer" onClick={onClose} role="presentation">
       <div
-        className="quest-modal panel stack"
+        className="quest-popover"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="quest-modal-title"
       >
-        <div className="quest-modal-header">
-          <div className="panel-title">
-            <Medal size={18} />
-            Quest node
+        <header className="quest-popover-header">
+          <div>
+            <h2 id="quest-modal-title" className="quest-title">{node.title}</h2>
+            <p className="quest-subtitle">{node.description}</p>
           </div>
-          <button className="ghost-button quest-modal-close" type="button" onClick={onClose} aria-label="Close">
+          <button className="ghost-button quest-popover-close" type="button" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
-        </div>
+        </header>
 
-        <span className={`status-pill ${node.status}`}>{node.status}</span>
-        <h2 id="quest-modal-title">{node.title}</h2>
-        <p>{node.description}</p>
-
-        <dl className="node-meta">
-          <div>
-            <dt>Difficulty</dt>
-            <dd>{node.difficulty}</dd>
-          </div>
-          <div>
-            <dt>Reward</dt>
-            <dd>{node.xp} XP</dd>
-          </div>
-          <div>
-            <dt>Estimate</dt>
-            <dd>{node.estimatedHours}h</dd>
-          </div>
-        </dl>
-
-        {(node.identity || node.tradeoff) && (
-          <div className="identity-grid">
-            {node.identity && (
-              <div>
-                <strong>Identity path</strong>
-                <p>{node.identity}</p>
-              </div>
-            )}
-            {node.tradeoff && (
-              <div>
-                <strong>Tradeoff</strong>
-                <p>{node.tradeoff}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div>
-          <strong>Prerequisites</strong>
-          <p className="muted">{prerequisites.length ? prerequisites.join(', ') : 'None'}</p>
+        <div className="quest-badges">
+          <span className={`status-pill ${node.status}`}>{node.status}</span>
+          <span className="quest-pill">{node.difficulty}</span>
+          <span className="quest-pill">{node.xp} XP</span>
+          {node.identity && <span className="quest-pill">{node.identity}</span>}
         </div>
 
         {node.proof && (
-          <div className="proof-box">
+          <div className="quest-section">
             <strong>Proof prompt</strong>
-            <p>{node.proof.prompt}</p>
+            <p className="quest-text">{node.proof.prompt}</p>
           </div>
         )}
 
         {node.tips && node.tips.length > 0 && (
-          <div className="proof-box tips-box">
-            <strong>Tips</strong>
+          <details className="quest-details">
+            <summary>Tips</summary>
             <ul>
               {node.tips.map((tip) => (
                 <li key={tip}>{tip}</li>
               ))}
             </ul>
-          </div>
+          </details>
         )}
 
-        <form className="stack quest-modal-form" onSubmit={(event) => void submitComplete(event, growAfterComplete)}>
+        <details className="quest-details">
+          <summary>More details</summary>
+          {node.tradeoff && (
+            <p className="quest-text">
+              <strong>Tradeoff:</strong> {node.tradeoff}
+            </p>
+          )}
+          <p className="quest-text">
+            <strong>Prereqs:</strong> {prerequisites.length ? prerequisites.join(', ') : 'None'}
+          </p>
+        </details>
+
+        <form className="quest-form" onSubmit={(event) => void submitComplete(event, growAfterComplete)}>
           {node.status === 'unlocked' && (
             <>
-              <label>
-                Quest journal
-                <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} />
+              <label className="quest-label">
+                Journal
+                <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} />
               </label>
-              <label>
-                Focus tags
-                <input
-                  value={tags}
-                  placeholder="Optional: comma-separated focus areas"
-                  onChange={(event) => setTags(event.target.value)}
-                />
-              </label>
-              <label>
-                Proof URL
-                <input placeholder="https://..." value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} />
-              </label>
+              <div className="quest-grid">
+                <label className="quest-label">
+                  Tags
+                  <input value={tags} placeholder="Optional" onChange={(event) => setTags(event.target.value)} />
+                </label>
+                <label className="quest-label">
+                  Proof URL
+                  <input placeholder="Optional" value={proofUrl} onChange={(event) => setProofUrl(event.target.value)} />
+                </label>
+              </div>
             </>
           )}
 
-          <div className="adapt-box">
-            <strong>Grow this branch</strong>
-            <p className="muted">Optional signals for AI to add deeper child nodes with XP rewards.</p>
+          <label className="quest-label">
+            Grow branch (optional)
             <input
               value={signals}
-              placeholder="What happened, what you want next, or your preferred style"
+              placeholder="Signals for AI"
               onChange={(event) => setSignals(event.target.value)}
             />
-            {node.status === 'unlocked' && (
-              <label className="quest-checkbox">
-                <input
-                  checked={growAfterComplete}
-                  type="checkbox"
-                  onChange={(event) => setGrowAfterComplete(event.target.checked)}
-                />
-                Grow branch after completing this quest
-              </label>
-            )}
-          </div>
+          </label>
 
-          <div className="quest-modal-actions">
+          {node.status === 'unlocked' && (
+            <label className="quest-checkbox">
+              <input
+                checked={growAfterComplete}
+                type="checkbox"
+                onChange={(event) => setGrowAfterComplete(event.target.checked)}
+              />
+              Grow after complete
+            </label>
+          )}
+
+          <div className="quest-actions">
             <button className="ghost-button" disabled={disabled} type="button" onClick={onClose}>
               Close
             </button>
             {(node.status === 'locked' || node.status === 'complete') && (
               <button className="secondary-button" disabled={disabled} type="button" onClick={() => void growOnly()}>
-                <Sparkles size={16} /> Grow branch
+                <Sparkles size={16} /> Grow
               </button>
             )}
             {node.status === 'unlocked' && (
@@ -204,10 +180,10 @@ export function NodeQuestModal({ tree, node, disabled, onClose, onFinish }: Node
                   type="button"
                   onClick={(event) => void submitComplete(event, false)}
                 >
-                  Complete & close
+                  Complete
                 </button>
                 <button className="primary-button" disabled={disabled} type="submit">
-                  Complete {growAfterComplete ? '& grow branch' : '& close'}
+                  Complete{growAfterComplete ? ' + grow' : ''}
                 </button>
               </>
             )}
