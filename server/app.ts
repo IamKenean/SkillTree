@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { adaptSkillTree, completeNode, generateSkillTree, parseInterests } from '../src/shared/skillTree.js';
 import type { DashboardPayload, GoalSummary, PublicUser, SkillTree } from '../src/shared/types.js';
 import { JsonStore, type UserRecord } from './dataStore.js';
+import { suggestInterestsViaGemini } from './gemini.js';
 
 const authSchema = z.object({
   username: z.string().trim().min(3).max(24),
@@ -163,7 +164,18 @@ export function createApp({ store, jwtSecret = process.env.JWT_SECRET ?? 'dev-se
   app.post('/api/goals', requireAuth, async (req: AuthenticatedRequest, res, next) => {
     try {
       const input = goalSchema.parse(req.body);
-      const tree = generateSkillTree({ ...input, interests: parseInterests(input.interests).join(', ') });
+      const apiKey = process.env.GEMINI_API_KEY?.trim();
+      let interests = parseInterests(input.interests).join(', ');
+      if (apiKey) {
+        try {
+          interests = await suggestInterestsViaGemini({ ...input, interests }, { apiKey });
+        } catch (error) {
+          // Fail loudly if Gemini is configured but not working; otherwise "Generate" looks like it did nothing.
+          throw new Error(error instanceof Error ? error.message : 'Gemini generation failed.');
+        }
+      }
+
+      const tree = generateSkillTree({ ...input, interests });
       await store.update((data) => {
         data.goals[req.user!.id] = [tree, ...(data.goals[req.user!.id] ?? [])];
       });
